@@ -9,7 +9,6 @@ When you enable HDR in Windows, standard desktop apps (SDR content) can often lo
 * **Tailored for Legion Go 2:** The brightness curve is not based on generic linear math. It uses a custom, empirically tested 0-100 mapping table specifically calibrated for the Legion Go 2 display to translate system brightness into standard Nits (80 to 480 nits) accurately.
 * **Automatic HDR Detection:** Continuously monitors your display topology. It only activates the brightness listener when an HDR signal (Advanced Color) is detected.
 * **Real-time Synchronization:** Uses Windows Management Instrumentation (WMI) to instantly catch hardware brightness changes (via Legion Space hotkeys, Windows quick settings, or physical buttons).
-* **Universal Display Support:** Works seamlessly with the Legion Go 2's internal screen, as well as external monitors connected via DisplayPort or HDMI.
 * **Zero UAC Nagging:** Features an "idiot-proof" autostart mechanism. It securely copies itself to `%LocalAppData%` and sets up a high-privilege Task Scheduler entry, allowing it to start silently with Windows without triggering User Account Control (UAC) prompts.
 
 ## 🚀 How to use
