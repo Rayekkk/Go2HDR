@@ -33,9 +33,12 @@ Go2HDR runs in the background and continuously monitors your screen brightness. 
 ---
 
 ## Screenshots
+<div align="center">
+  <img src="Screenshots/Go2HDR.png" width="960" alt="Go2HDR_Main"/>
+  <img src="Screenshots/Go2HDR_CurveEditor.png" width="960" alt="Go2HDR_CurveEditor.png"/>
+  <img src="Screenshots/Go2HDR_Settings.png" width="960" alt="Go2HDR_Settings.png"/>
+</div>
 
-<!-- Add screenshots here after first run -->
-> *Screenshots coming soon.*
 
 ---
 
