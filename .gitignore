@@ -1,0 +1,30 @@
+# Build output
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Publish profiles (user-specific overrides)
+Properties/PublishProfiles/*.pubxml.user
+
+# Installer build output & redistributable (too large for git)
+Installer/Output/
+Installer/redist/*.exe
+
+# NuGet
+*.nupkg
+packages/
+.nuget/
+
+# Claude Code project settings
+.claude/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store

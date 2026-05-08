@@ -1,0 +1,90 @@
+<ui:FluentWindow
+    x:Class="Go2HDR.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:tray="clr-namespace:Wpf.Ui.Tray.Controls;assembly=Wpf.Ui.Tray"
+    xmlns:pages="clr-namespace:Go2HDR.Views.Pages"
+    Title="Go2HDR"
+    Icon="pack://application:,,,/Assets/Go2HDR.ico"
+    Width="1100"
+    Height="720"
+    MinWidth="900"
+    MinHeight="600"
+    WindowStartupLocation="CenterScreen"
+    ExtendsContentIntoTitleBar="True"
+    WindowBackdropType="Mica"
+    StateChanged="OnStateChanged"
+    Closing="OnClosing">
+
+    <Grid>
+        <tray:NotifyIcon
+            x:Name="TrayIcon"
+            TooltipText="Go2HDR"
+            Icon="pack://application:,,,/Assets/Go2HDR.ico"
+            LeftClick="OnTrayOpen"
+            MenuOnRightClick="True">
+            <tray:NotifyIcon.Menu>
+                <ContextMenu>
+                    <MenuItem Header="Open Go2HDR" Click="OnTrayOpen"/>
+                    <Separator/>
+                    <MenuItem Header="Exit" Click="OnTrayExit"/>
+                </ContextMenu>
+            </tray:NotifyIcon.Menu>
+        </tray:NotifyIcon>
+
+        <ui:NavigationView
+            x:Name="RootNavigation"
+            PaneDisplayMode="Left"
+            IsBackButtonVisible="Collapsed"
+            IsPaneToggleVisible="True"
+            OpenPaneLength="220"
+            CompactPaneLength="56">
+
+            <ui:NavigationView.Header>
+                <ui:TitleBar Title="Go2HDR" Grid.Column="1">
+                    <ui:TitleBar.TrailingContent>
+                        <ui:Button
+                            Appearance="Transparent"
+                            ToolTip="Minimize to tray"
+                            Click="OnMinimizeToTray"
+                            Margin="0,0,4,0">
+                            <ui:Button.Icon>
+                                <ui:SymbolIcon Symbol="ChevronDown24"/>
+                            </ui:Button.Icon>
+                        </ui:Button>
+                    </ui:TitleBar.TrailingContent>
+                </ui:TitleBar>
+            </ui:NavigationView.Header>
+
+            <ui:NavigationView.MenuItems>
+                <ui:NavigationViewItem
+                    Content="Dashboard"
+                    TargetPageType="{x:Type pages:DashboardPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Home24"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+
+                <ui:NavigationViewItem
+                    Content="SDR Curve"
+                    TargetPageType="{x:Type pages:SdrCurvePage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="DataHistogram24"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+            </ui:NavigationView.MenuItems>
+
+            <ui:NavigationView.FooterMenuItems>
+                <ui:NavigationViewItem
+                    Content="Settings"
+                    TargetPageType="{x:Type pages:SettingsPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Settings24"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+            </ui:NavigationView.FooterMenuItems>
+
+        </ui:NavigationView>
+    </Grid>
+</ui:FluentWindow>

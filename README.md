@@ -1,32 +1,161 @@
-# Go2HDR for Lenovo Legion Go 2 ☀️
+<div align="center">
+  <img src="Assets/Go2HDR_About.png" width="96" alt="Go2HDR"/>
+  <h1>Go2HDR</h1>
+  <p>Automatic SDR white level compensation for HDR displays on Lenovo Legion Go 2</p>
 
-**Go2HDR** is a lightweight, system-tray utility specifically designed for the **Lenovo Legion Go 2**. It automatically synchronizes the SDR White Level (SDR brightness) with the device's actual hardware brightness whenever Windows HDR is active. 
+  ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square)
+  ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?style=flat-square)
+  ![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)
+</div>
 
-When you enable HDR in Windows, standard desktop apps (SDR content) can often look overly bright or washed out, requiring manual adjustment of the "SDR content brightness" slider. Go2HDR solves this by running quietly in the background, listening for hardware brightness changes, and instantly updating the SDR white level to match your Legion Go 2's screen brightness perfectly.
+---
 
-## ✨ Features
+## The Problem
 
-* **Tailored for Legion Go 2:** The brightness curve is not based on generic linear math. It uses a custom, empirically tested 0-100 mapping table specifically calibrated for the Legion Go 2 display to translate system brightness into standard Nits (80 to 480 nits) accurately.
-* **Automatic HDR Detection:** Continuously monitors your display topology. It only activates the brightness listener when an HDR signal (Advanced Color) is detected.
-* **Real-time Synchronization:** Uses Windows Management Instrumentation (WMI) to instantly catch hardware brightness changes (via Legion Space hotkeys, Windows quick settings, or physical buttons).
-* **Zero UAC Nagging:** Features an "idiot-proof" autostart mechanism. It securely copies itself to `%LocalAppData%` and sets up a high-privilege Task Scheduler entry, allowing it to start silently with Windows without triggering User Account Control (UAC) prompts.
+When HDR is enabled on the Lenovo Legion Go 2, SDR content (most games, apps, the Windows desktop) can appear washed out or incorrectly bright. This happens because Windows does not automatically adjust the **SDR white level** to match the display's current brightness setting — the value stays fixed while brightness can be anywhere from 0 to 100 %.
 
-## 🚀 How to use
+## What Go2HDR Does
 
-1. Download the latest `Go2HDR.exe` from the Releases page.
-2. Run the executable.
-3. On the first run, it will ask if you want it to start automatically with Windows. Click **Yes** (you will see a brief UAC prompt to create the scheduled task).
-4. That's it! The app will sit in your system tray. Whenever you turn on HDR, your SDR brightness will perfectly match your hardware brightness.
+Go2HDR runs in the background and continuously monitors your screen brightness. Whenever HDR is active and brightness changes, it immediately applies the correct SDR white level via the Windows **DisplayConfig API** — keeping SDR content looking natural at every brightness level, with no manual interaction required.
 
-## 🛠️ Technical Details
+---
 
-Go2HDR is written in C# and interacts directly with the low-level Windows API:
-* **`user32.dll` (DisplayConfig):** Used to query active display paths, check the `advancedColorEnabled` flag, and inject the raw `DISPLAYCONFIG_SET_SDR_WHITE_LEVEL` packets.
-* **`WqlEventQuery` (WMI):** Used to attach an asynchronous listener to the `WmiMonitorBrightness` class.
-* **`schtasks` (Task Scheduler):** Used to programmatically install/remove the elevated startup task.
+## Features
 
-### The Autostart Mechanism
-To ensure the app survives being moved or deleted from the Downloads folder, the autostart installation automatically creates an isolated directory in `%LocalAppData%\Go2HDR`, copies the executable there, and binds the Scheduled Task to that secure location.
+- **Automatic SDR adjustment** — reacts to HDR activation and brightness changes in real time
+- **Custom brightness-to-SDR curve** — tune the mapping precisely to your display and preference
+- **Live dashboard** — shows current brightness, SDR level, and luminance at a glance
+- **System tray** — runs quietly in the background; double-click the tray icon to restore
+- **Autostart with Windows** — optional, toggled from the Settings page
+- **Minimize to tray** — closing the window keeps it running; fully exits from the tray menu
+- **Fluent design UI** — built with WPF-UI 4.3, respects your Windows accent colour and theme
 
-## 📄 License
-This project is licensed under the MIT License - see the LICENSE file for details.
+---
+
+## Screenshots
+
+<!-- Add screenshots here after first run -->
+> *Screenshots coming soon.*
+
+---
+
+## Requirements
+
+| | |
+|---|---|
+| **Device** | Lenovo Legion Go 2 |
+| **OS** | Windows 10 version 1903 or later; Windows 11 recommended |
+| **Runtime** | .NET 10 is bundled — no separate installation required |
+| **Architecture** | x64 |
+
+---
+
+## Installation
+
+### Installer (recommended)
+
+1. Download `Go2HDR-Setup-x.x.x.exe` from the [Releases](../../releases) page.
+2. Run the installer — it will:
+   - install Go2HDR to `C:\Program Files\Go2HDR\`
+   - create a Start Menu shortcut
+   - optionally create a Desktop shortcut
+   - install the Visual C++ 2022 runtime if not already present
+   - close any running instance automatically if needed
+
+### Portable
+
+Download and run `Go2HDR.exe` directly from the [Releases](../../releases) page. No installation needed, but autostart and uninstall require the installer version.
+
+---
+
+## Building from Source
+
+### Prerequisites
+
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- Windows 10 / 11
+
+### Build
+
+```powershell
+git clone https://github.com/Rayekkk/Go2HDR
+cd Go2HDR
+dotnet build -c Release
+```
+
+### Build the installer
+
+1. Install [Inno Setup 6](https://jrsoftware.org/isinfo.php)
+2. Download [`VC_redist.x64.exe`](https://aka.ms/vs/17/release/vc_redist.x64.exe) into `Installer\redist\`
+3. Run the build script:
+
+```powershell
+.\build-installer.ps1
+```
+
+The installer will appear in `Installer\Output\`.
+
+---
+
+## How It Works
+
+### SDR white level
+
+Windows exposes the SDR white level through `DisplayConfigSetDeviceInfo` with the `DC_SET_SDR_WHITE_LEVEL` request. The raw value passed to the API is calculated as:
+
+```
+nits   = 80 + sdrLevel × 4
+raw    = nits × 1000 / 80
+```
+
+Where `sdrLevel` is a 0–100 value read from the user-configured brightness curve.
+
+### Brightness detection
+
+Screen brightness changes are detected via WMI (`WmiMonitorBrightness`). An event watcher fires immediately when the display driver reports a change — no polling delay.
+
+### HDR state detection
+
+HDR activation is detected by polling `DisplayConfigGetDeviceInfo` (`DC_GET_ADVANCED_COLOR_INFO`) on a configurable interval (default: 2 s). When HDR turns on or the app starts with HDR active, the SDR level is applied immediately.
+
+### Brightness curve
+
+The SDR Curve page lets you define a piecewise linear mapping from screen brightness (%) to SDR level (0–100). The table is editable row by row; the graph updates live as you type. Changes are auto-saved.
+
+---
+
+## Project Structure
+
+```
+Go2HDR/
+├── Assets/                  Icons and images
+├── Converters/              WPF value converters
+├── Installer/               Inno Setup script and build output
+│   └── redist/              Place VC_redist.x64.exe here (not tracked by git)
+├── Models/                  AppSettings, CurvePoint
+├── Properties/PublishProfiles/  dotnet publish profile (win-x64)
+├── Services/
+│   ├── AutostartService     Windows registry autostart
+│   ├── BrightnessService    WMI brightness watcher
+│   ├── DisplayConfigService DisplayConfig P/Invoke (HDR detection + SDR apply)
+│   ├── HdrService           Coordinator: polling, events, SDR refresh
+│   └── SettingsService      JSON persistence + curve interpolation
+├── ViewModels/              MVVM ViewModels (CommunityToolkit.Mvvm)
+├── Views/
+│   ├── Controls/CurveEditor Interactive canvas curve editor
+│   └── Pages/               Dashboard, SDR Curve, Settings pages
+├── build-installer.ps1      Build script: dotnet publish → Inno Setup
+└── Go2HDR.csproj
+```
+
+---
+
+## Contributing
+
+Pull requests are welcome. For significant changes, please open an issue first to discuss what you'd like to change.
+
+---
+
+## License
+
+[MIT](LICENSE)
