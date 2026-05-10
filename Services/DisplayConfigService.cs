@@ -62,6 +62,11 @@ public class DisplayConfigService
     private long _pathCacheTick;                    // Environment.TickCount64
     private const long PathCacheTtlMs = 4_000;
 
+    public void InvalidateCache()
+    {
+        lock (_cacheLock) { _pathCache = null; }
+    }
+
     private bool GetPaths(out DISPLAYCONFIG_PATH_INFO[] paths)
     {
         lock (_cacheLock)

@@ -1,5 +1,6 @@
 using Go2HDR.Services;
 using Go2HDR.ViewModels;
+using Go2HDR.Views.Pages;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO;
 using System.Threading;
@@ -58,10 +59,15 @@ public partial class App : Application
         sc.AddSingleton<DisplayConfigService>();
         sc.AddSingleton<BrightnessService>();
         sc.AddSingleton<AutostartService>();
+        sc.AddSingleton<UpdateService>();
+        sc.AddSingleton<NotificationService>();
         sc.AddSingleton<HdrService>();
         sc.AddSingleton<DashboardViewModel>();
         sc.AddSingleton<SdrCurveViewModel>();
         sc.AddSingleton<SettingsViewModel>();
+        sc.AddSingleton<DashboardPage>();
+        sc.AddSingleton<SdrCurvePage>();
+        sc.AddSingleton<SettingsPage>();
         sc.AddSingleton<MainWindow>();
         Services = sc.BuildServiceProvider();
 
@@ -75,6 +81,14 @@ public partial class App : Application
 
         var hdr = Services.GetRequiredService<HdrService>();
         hdr.Start();
+
+        if (settings.Current.CheckUpdatesOnStartup)
+        {
+            var notifySvc = Services.GetRequiredService<NotificationService>();
+            var updateSvc = Services.GetRequiredService<UpdateService>();
+            updateSvc.NewVersionFound += r => notifySvc.ShowUpdateAvailable(r.LatestVersion, r.ReleaseUrl);
+            _ = updateSvc.CheckAsync();
+        }
 
         var window = Services.GetRequiredService<MainWindow>();
 

@@ -1,21 +1,26 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Go2HDR.Models;
 using Go2HDR.Services;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Windows;
 
 namespace Go2HDR.ViewModels;
 
 public partial class DashboardViewModel : ObservableObject
 {
-    private readonly HdrService      _hdr;
-    private readonly SettingsService _settings;
+    private readonly HdrService        _hdr;
+    private readonly SettingsService   _settings;
     private readonly SdrCurveViewModel _curve;
 
-    [ObservableProperty] private bool _isHdrActive;
-    [ObservableProperty] private byte _currentBrightness;
-    [ObservableProperty] private int  _currentSdrValue;
-    [ObservableProperty] private int  _currentNits = 80;
+    [ObservableProperty] private bool   _isHdrActive;
+    [ObservableProperty] private byte   _currentBrightness;
+    [ObservableProperty] private int    _currentSdrValue;
+    [ObservableProperty] private int    _currentNits = 80;
+    [ObservableProperty] private bool   _updateAvailable;
+    [ObservableProperty] private string _updateVersion = "";
+    [ObservableProperty] private string _updateUrl = "";
 
     public bool IsEnabled
     {
@@ -62,7 +67,8 @@ public partial class DashboardViewModel : ObservableObject
         : null;
 
     public DashboardViewModel(HdrService hdr, BrightnessService brightness,
-                               SettingsService settings, SdrCurveViewModel curve)
+                               SettingsService settings, SdrCurveViewModel curve,
+                               UpdateService update)
     {
         _hdr      = hdr;
         _settings = settings;
@@ -71,16 +77,38 @@ public partial class DashboardViewModel : ObservableObject
         hdr.HdrStateChanged   += OnHdrStateChanged;
         hdr.BrightnessChanged += OnBrightnessChanged;
 
+        update.NewVersionFound += r => Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            UpdateAvailable = true;
+            UpdateVersion   = r.LatestVersion;
+            UpdateUrl       = r.ReleaseUrl;
+        });
+
 #pragma warning disable MVVMTK0034
         _isHdrActive = hdr.IsHdrActive;
         if (_isHdrActive)
         {
-            byte b         = brightness.GetCurrentBrightness();
+            byte b             = brightness.GetCurrentBrightness();
             _currentBrightness = b;
             _currentSdrValue   = settings.GetSdrValue(b);
             _currentNits       = SettingsService.SdrValueToNits(_currentSdrValue);
         }
+
+        // Catch the case where CheckAsync ran and completed before this VM was constructed.
+        if (update.LastResult?.IsNewer == true)
+        {
+            _updateAvailable = true;
+            _updateVersion   = update.LastResult.LatestVersion;
+            _updateUrl       = update.LastResult.ReleaseUrl;
+        }
 #pragma warning restore MVVMTK0034
+    }
+
+    [RelayCommand]
+    private void OpenReleasePage()
+    {
+        if (!string.IsNullOrEmpty(UpdateUrl))
+            Process.Start(new ProcessStartInfo(UpdateUrl) { UseShellExecute = true });
     }
 
     partial void OnIsHdrActiveChanged(bool value)

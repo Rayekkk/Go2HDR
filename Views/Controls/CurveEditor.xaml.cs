@@ -46,8 +46,9 @@ public partial class CurveEditor : UserControl
     private TextBlock?    _yTitle;
     private bool          _persistentElementsReady;
 
-    // Dynamic curve elements (fill Polygon + Polyline) — removed and re-added each Redraw.
-    private readonly List<UIElement> _dynamicElements = [];
+    // Persistent curve elements — created once in EnsurePersistentElements, updated in place.
+    private Polygon?  _fillPolygon;
+    private Polyline? _curvePolyline;
 
     // Point Ellipses — pooled by CurvePoint to avoid recreation every Redraw.
     private readonly Dictionary<CurvePoint, Ellipse> _pointEllipses = [];
@@ -109,6 +110,13 @@ public partial class CurveEditor : UserControl
     public event EventHandler<CurvePoint>? AddPointRequested;
     public event EventHandler<CurvePoint>? RemovePointRequested;
 
+    internal void ForceRedrawNow()
+    {
+        _redrawDebounce.Stop();
+        EnsurePersistentElements(); // pre-create canvas children even without valid layout
+        if (ActualWidth >= 1) RedrawCore();
+    }
+
     // ── Constructor ────────────────────────────────────────────────────────
 
     public CurveEditor()
@@ -118,8 +126,8 @@ public partial class CurveEditor : UserControl
         _redrawDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         _redrawDebounce.Tick += (_, _) => { _redrawDebounce.Stop(); Redraw(); };
 
-        Loaded      += (_, _) => Redraw();
-        SizeChanged += (_, _) => Redraw();
+        Loaded      += (_, _) => { _redrawDebounce.Stop(); Redraw(); };
+        SizeChanged += (_, _) => { _redrawDebounce.Stop(); _redrawDebounce.Start(); };
         MainCanvas.MouseLeftButtonDown += OnCanvasMouseDown;
         MainCanvas.MouseMove           += OnCanvasMouseMove;
         MainCanvas.MouseLeftButtonUp   += OnCanvasMouseUp;
@@ -192,23 +200,23 @@ public partial class CurveEditor : UserControl
 
     // ── Drawing ────────────────────────────────────────────────────────────
 
-    void Redraw()
+    void Redraw() { if (!IsLoaded || ActualWidth < 1) return; RedrawCore(); }
+
+    void RedrawCore()
     {
-        if (!IsLoaded || ActualWidth < 1) return;
-
-        // Remove only the two dynamic curve elements from the previous frame.
-        foreach (var el in _dynamicElements)
-            MainCanvas.Children.Remove(el);
-        _dynamicElements.Clear();
-
-        // Pre-sorted visible point list used by DrawCurve and UpdatePoints.
         var visible = Points?.Where(p => p.Brightness >= MinBrightness && p.Brightness <= 100)
                              .OrderBy(p => p.Brightness).ToList();
 
         EnsurePersistentElements();
         UpdateGrid();
         UpdateAxisLabels();
-        if (visible is { Count: > 1 }) DrawCurve(visible);
+        if (visible is { Count: > 1 })
+            DrawCurve(visible);
+        else
+        {
+            if (_fillPolygon   != null) _fillPolygon.Visibility   = Visibility.Collapsed;
+            if (_curvePolyline != null) _curvePolyline.Visibility = Visibility.Collapsed;
+        }
         UpdatePoints(visible);
     }
 
@@ -247,6 +255,19 @@ public partial class CurveEditor : UserControl
         MainCanvas.Children.Add(_xTitle);
         MainCanvas.Children.Add(_yTitle);
 
+        _fillPolygon = new Polygon { Visibility = Visibility.Collapsed };
+        Panel.SetZIndex(_fillPolygon, 2);
+        MainCanvas.Children.Add(_fillPolygon);
+
+        _curvePolyline = new Polyline
+        {
+            StrokeThickness = 2.5,
+            StrokeLineJoin  = PenLineJoin.Round,
+            Visibility      = Visibility.Collapsed
+        };
+        Panel.SetZIndex(_curvePolyline, 3);
+        MainCanvas.Children.Add(_curvePolyline);
+
         _persistentElementsReady = true;
     }
 
@@ -275,22 +296,13 @@ public partial class CurveEditor : UserControl
         var fillPts = new PointCollection { new(ToCanvas(sorted[0]).X, PadT + PlotH) };
         foreach (var p in sorted) fillPts.Add(ToCanvas(p));
         fillPts.Add(new(ToCanvas(sorted[^1]).X, PadT + PlotH));
-        var fill = new Polygon { Points = fillPts, Fill = AccentFillBrush() };
-        Panel.SetZIndex(fill, 2);
-        MainCanvas.Children.Add(fill);
-        _dynamicElements.Add(fill);
+        _fillPolygon!.Points    = fillPts;
+        _fillPolygon.Fill       = AccentFillBrush();
+        _fillPolygon.Visibility = Visibility.Visible;
 
-        var linePts = new PointCollection(sorted.Select(ToCanvas));
-        var curve = new Polyline
-        {
-            Points          = linePts,
-            Stroke          = AccentBrush(),
-            StrokeThickness = 2.5,
-            StrokeLineJoin  = PenLineJoin.Round
-        };
-        Panel.SetZIndex(curve, 3);
-        MainCanvas.Children.Add(curve);
-        _dynamicElements.Add(curve);
+        _curvePolyline!.Points     = new PointCollection(sorted.Select(ToCanvas));
+        _curvePolyline.Stroke      = AccentBrush();
+        _curvePolyline.Visibility  = Visibility.Visible;
     }
 
     // Reuses pooled Ellipses; creates or removes only when the visible set changes.
@@ -342,40 +354,43 @@ public partial class CurveEditor : UserControl
         var fg = (Brush)(TryFindResource("TextFillColorSecondaryBrush")
             ?? new SolidColorBrush(Color.FromArgb(180, 180, 180, 180)));
 
+        // Use pre-computed font metrics for Segoe UI 10pt to avoid calling Measure()
+        // on every Redraw — those calls block the UI thread and drop animation frames.
+        const double charW  = 6.5;   // average glyph advance width (DIP)
+        const double labelH = 14.0;  // single-line cap height + descenders (DIP)
+
         double range = 100.0 - MinBrightness;
 
         for (int i = 0; i <= 5; i++)
         {
-            double b = MinBrightness + i * range / 5;
+            double b    = MinBrightness + i * range / 5;
+            string text = $"{(int)Math.Round(b)}%";
             double canvasX = PadL + (1.0 - (b - MinBrightness) / range) * PlotW;
             var tb = _xLabels![i];
-            tb.Text = $"{(int)Math.Round(b)}%"; tb.Foreground = fg;
-            tb.Measure(new Size(500, 100));
-            Canvas.SetLeft(tb, canvasX - tb.DesiredSize.Width / 2);
+            tb.Text = text; tb.Foreground = fg;
+            Canvas.SetLeft(tb, canvasX - text.Length * charW / 2);
             Canvas.SetTop(tb, PadT + PlotH + 5);
         }
 
         for (int i = 0; i <= 5; i++)
         {
-            int sdr  = i * 20;
-            int nits = 80 + sdr * 4;
+            int    sdr    = i * 20;
+            int    nits   = 80 + sdr * 4;
+            string text   = $"{nits}";
             double canvasY = PadT + (1.0 - sdr / 100.0) * PlotH;
             var tb = _yLabels![i];
-            tb.Text = $"{nits}"; tb.Foreground = fg;
-            tb.Measure(new Size(500, 100));
-            Canvas.SetLeft(tb, PadL - tb.DesiredSize.Width - 5);
-            Canvas.SetTop(tb, canvasY - tb.DesiredSize.Height / 2);
+            tb.Text = text; tb.Foreground = fg;
+            Canvas.SetLeft(tb, PadL - text.Length * charW - 5);
+            Canvas.SetTop(tb, canvasY - labelH / 2);
         }
 
         _xTitle!.Foreground = fg;
-        _xTitle.Measure(new Size(500, 100));
-        Canvas.SetLeft(_xTitle, PadL + PlotW / 2 - _xTitle.DesiredSize.Width / 2);
+        Canvas.SetLeft(_xTitle, PadL + PlotW / 2 - _xTitle.Text.Length * 6.3 / 2);
         Canvas.SetTop(_xTitle, PadT + PlotH + 22);
 
         _yTitle!.Foreground = fg;
-        _yTitle.Measure(new Size(500, 100));
         Canvas.SetLeft(_yTitle, 2);
-        Canvas.SetTop(_yTitle, PadT + PlotH / 2 + _yTitle.DesiredSize.Width / 2);
+        Canvas.SetTop(_yTitle, PadT + PlotH / 2 + _yTitle.Text.Length * 6.3 / 2);
     }
 
     TextBlock MakeLabel(string text, double size) =>

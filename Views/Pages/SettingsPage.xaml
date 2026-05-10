@@ -85,31 +85,66 @@
                 </Grid>
             </ui:Card>
 
-            <!-- Advanced -->
-            <TextBlock Text="Advanced" FontSize="13" FontWeight="SemiBold"
+            <!-- Updates -->
+            <TextBlock Text="Updates" FontSize="13" FontWeight="SemiBold"
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                        Margin="0,16,0,8"/>
 
             <ui:Card Margin="0,0,0,8">
                 <Grid>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="200"/></Grid.ColumnDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="HDR Poll Interval (ms)" FontWeight="SemiBold" FontSize="14"/>
-                        <TextBlock Text="How often to check whether HDR is active. Lower values respond faster but use slightly more CPU."
+                        <TextBlock Text="Check for updates on startup" FontWeight="SemiBold" FontSize="14"/>
+                        <TextBlock Text="Automatically check for a new version each time Go2HDR launches."
                                    FontSize="12" Opacity="0.7" Margin="0,3,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
-                    <ui:NumberBox Grid.Column="1" VerticalAlignment="Center"
-                                  Value="{Binding PollIntervalMs}"
-                                  Minimum="500" Maximum="30000"
-                                  SmallChange="500" LargeChange="1000"
-                                  SpinButtonPlacementMode="Inline"/>
+                    <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
+                                     IsChecked="{Binding CheckUpdatesOnStartup}"/>
+                </Grid>
+            </ui:Card>
+
+            <ui:Card Margin="0,0,0,24">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Software Updates" FontWeight="SemiBold" FontSize="14"/>
+                        <TextBlock Text="{Binding UpdateStatusText}"
+                                   FontSize="12" Opacity="0.7" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <ui:Button Content="Check for Updates"
+                                   Icon="{ui:SymbolIcon ArrowSync24}"
+                                   Command="{Binding CheckForUpdatesCommand}"
+                                   IsEnabled="{Binding CanCheckForUpdates}"/>
+                        <Border Margin="0,6,0,0">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding UpdateAvailable}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <ui:Button Content="Open release page"
+                                       Icon="{ui:SymbolIcon Open24}"
+                                       Command="{Binding OpenReleasePageCommand}"
+                                       Appearance="Primary"/>
+                        </Border>
+                    </StackPanel>
                 </Grid>
             </ui:Card>
 
             <!-- About -->
             <TextBlock Text="About" FontSize="13" FontWeight="SemiBold"
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                       Margin="0,16,0,8"/>
+                       Margin="0,0,0,8"/>
 
             <ui:Card>
                 <Grid>
@@ -117,13 +152,20 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
+
                     <Image Width="48" Height="48" Margin="0,0,16,0"
                            Source="pack://application:,,,/Assets/Go2HDR_About.png"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
+
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="Go2HDR" FontSize="16" FontWeight="SemiBold"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Go2HDR" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding AppVersionLabel}"
+                                       FontSize="11" Opacity="0.45"
+                                       VerticalAlignment="Bottom" Margin="8,0,0,2"/>
+                        </StackPanel>
                         <TextBlock Text="Automatic SDR brightness compensation for HDR displays"
-                                   FontSize="12" Opacity="0.7" Margin="0,2,0,0"/>
+                                   FontSize="12" Opacity="0.7" Margin="0,4,0,0"/>
                         <TextBlock Text="Optimized for Lenovo Legion Go 2"
                                    FontSize="11" Opacity="0.5" Margin="0,2,0,0"/>
                     </StackPanel>

@@ -15,6 +15,7 @@
             <conv:HdrStatusColorConverter    x:Key="HdrStatusColorConverter"/>
             <conv:HdrStatusBackgroundConverter x:Key="HdrStatusBackgroundConverter"/>
             <BooleanToVisibilityConverter    x:Key="BoolToVis"/>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

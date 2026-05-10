@@ -1,5 +1,3 @@
-using System.Windows.Threading;
-
 namespace Go2HDR.Services;
 
 public class HdrService : IDisposable
@@ -7,8 +5,7 @@ public class HdrService : IDisposable
     private readonly DisplayConfigService _display;
     private readonly BrightnessService _brightness;
     private readonly SettingsService _settings;
-    private readonly DispatcherTimer _pollTimer;
-    private bool _hdrActive;
+    private volatile bool _hdrActive;
 
     public event Action<bool>? HdrStateChanged;
     public event Action<byte>? BrightnessChanged;
@@ -22,31 +19,19 @@ public class HdrService : IDisposable
         _settings = settings;
 
         _brightness.BrightnessChanged += OnBrightnessChanged;
-
-        _pollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(_settings.Current.PollIntervalMs) };
-        _pollTimer.Tick += OnPollTick;
     }
 
     public void Start()
     {
-        _pollTimer.Start();
         Poll();
     }
 
     public void Stop()
     {
-        _pollTimer.Stop();
         _brightness.StopWatching();
     }
 
-    public void UpdatePollInterval()
-    {
-        _pollTimer.Interval = TimeSpan.FromMilliseconds(_settings.Current.PollIntervalMs);
-    }
-
-    private void OnPollTick(object? sender, EventArgs e) => Poll();
-
-    private void Poll()
+    public void Poll()
     {
         bool hdrNow = _display.IsBuiltInHdrActive();
         if (hdrNow == _hdrActive) return;
@@ -94,3 +79,4 @@ public class HdrService : IDisposable
         _brightness.BrightnessChanged -= OnBrightnessChanged;
     }
 }
+

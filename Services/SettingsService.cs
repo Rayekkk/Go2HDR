@@ -52,8 +52,7 @@ public class SettingsService
 
     public int GetSdrValue(byte brightness)
     {
-        // Build and cache the sorted array; SdrCurveViewModel always saves in ascending order
-        // so the sort here is O(n log n) only on the first call after a save.
+        if (brightness < Current.MinimumBrightness) return 0;
         var pts = _sortedPoints ??= [.. Current.CurvePoints.OrderBy(p => p.Brightness)];
         if (pts.Length == 0) return 0;
         if (brightness <= pts[0].Brightness) return (int)pts[0].SdrValue;

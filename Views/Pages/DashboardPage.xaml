@@ -9,6 +9,21 @@
     <ScrollViewer x:Name="RootScroller" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="24,16,24,24" MaxWidth="900">
 
+            <!-- ── Update banner (visible only when an update is available) ── -->
+            <ui:InfoBar
+                IsOpen="{Binding UpdateAvailable, Mode=OneWay}"
+                IsClosable="False"
+                Severity="Informational"
+                Title="Update available"
+                Message="{Binding UpdateVersion, StringFormat='Go2HDR {0} is ready to download.'}"
+                Margin="0,0,0,16">
+                <ui:Button Content="Open release page"
+                           Command="{Binding OpenReleasePageCommand}"
+                           Appearance="Primary"
+                           HorizontalAlignment="Left"
+                           Margin="0,4,0,0"/>
+            </ui:InfoBar>
+
             <!-- ── Main switch ── -->
             <Border CornerRadius="8" Margin="0,0,0,16" Padding="16,14"
                     Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
@@ -153,7 +168,7 @@
             <ui:InfoBar
                 IsOpen="True" IsClosable="False" Severity="Informational"
                 Title="Lenovo Legion Go 2"
-                Message="Go2HDR polls HDR state every 2 s. When active it reads brightness via WMI and maps it to the SDR white level using your custom curve."/>
+                Message="HDR state is detected instantly via Windows display events. When HDR is active, screen brightness is read via WMI and mapped to the SDR white level using your custom curve."/>
 
         </StackPanel>
     </ScrollViewer>

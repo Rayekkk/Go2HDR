@@ -7,7 +7,7 @@
     xmlns:pages="clr-namespace:Go2HDR.Views.Pages"
     Title="Go2HDR"
     Icon="pack://application:,,,/Assets/Go2HDR.ico"
-    Width="1100"
+    Width="1200"
     Height="720"
     MinWidth="900"
     MinHeight="600"
@@ -38,24 +38,14 @@
             PaneDisplayMode="Left"
             IsBackButtonVisible="Collapsed"
             IsPaneToggleVisible="True"
-            OpenPaneLength="220"
-            CompactPaneLength="56">
-
-            <ui:NavigationView.Header>
-                <ui:TitleBar Title="Go2HDR" Grid.Column="1">
-                    <ui:TitleBar.TrailingContent>
-                        <ui:Button
-                            Appearance="Transparent"
-                            ToolTip="Minimize to tray"
-                            Click="OnMinimizeToTray"
-                            Margin="0,0,4,0">
-                            <ui:Button.Icon>
-                                <ui:SymbolIcon Symbol="ChevronDown24"/>
-                            </ui:Button.Icon>
-                        </ui:Button>
-                    </ui:TitleBar.TrailingContent>
-                </ui:TitleBar>
-            </ui:NavigationView.Header>
+            OpenPaneLength="280"
+            CompactPaneLength="40"
+            IsTopSeparatorVisible="False"
+            IsFooterSeparatorVisible="False"
+            FrameMargin="0"
+            Transition="FadeInWithSlide"
+            TransitionDuration="180"
+            TitleBar="{Binding ElementName=TitleBar, Mode=OneWay}">
 
             <ui:NavigationView.MenuItems>
                 <ui:NavigationViewItem
@@ -86,5 +76,14 @@
             </ui:NavigationView.FooterMenuItems>
 
         </ui:NavigationView>
+
+        <ui:TitleBar
+            x:Name="TitleBar"
+            Title="Go2HDR">
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Source="pack://application:,,,/Assets/Go2HDR_About.png"/>
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
     </Grid>
 </ui:FluentWindow>

@@ -111,29 +111,23 @@
                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                 ScrollViewer.VerticalScrollBarVisibility="Auto"
                 VirtualizingPanel.ScrollUnit="Pixel"
-                CellEditEnding="OnCellEditEnding"
-                PreparingCellForEdit="OnPreparingCellForEdit">
+                IsReadOnly="True">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Brightness (%)"
                         Binding="{Binding Brightness, StringFormat={}{0:F0}}"
                         IsReadOnly="True"
                         Width="*"/>
-                    <DataGridTemplateColumn Header="SDR Level" Width="*">
+                    <DataGridTemplateColumn Header="SDR Level" Width="*" IsReadOnly="True">
                         <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type models:CurvePoint}">
-                                <TextBlock Text="{Binding SdrValue, StringFormat={}{0:F0}}"
-                                           Margin="4,0" VerticalAlignment="Center"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                        <DataGridTemplateColumn.CellEditingTemplate>
                             <DataTemplate DataType="{x:Type models:CurvePoint}">
                                 <ui:NumberBox
                                     Value="{Binding SdrValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                     Minimum="0" Maximum="100"
                                     SmallChange="1" LargeChange="5"
-                                    SpinButtonPlacementMode="Inline"/>
+                                    SpinButtonPlacementMode="Inline"
+                                    Margin="2,1"/>
                             </DataTemplate>
-                        </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                     <DataGridTemplateColumn Header="Luminance (nits)" Width="*" IsReadOnly="True">
                         <DataGridTemplateColumn.CellTemplate>

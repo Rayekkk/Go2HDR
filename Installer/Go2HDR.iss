@@ -1,5 +1,5 @@
 #define AppName      "Go2HDR"
-#define AppVersion   "2.0.0"
+#define AppVersion   "2.1.0"
 #define AppPublisher "Go2HDR"
 #define AppExeName   "Go2HDR.exe"
 #define SourceDir    "..\bin\Publish"
@@ -23,7 +23,7 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\{#AppExeName}
-MinVersion=10.0
+MinVersion=10.0.17763
 CloseApplications=yes
 
 [Languages]
@@ -95,12 +95,16 @@ begin
   end;
 end;
 
-// After uninstall: remove the autostart registry entry if the user had it enabled.
+// After uninstall: remove autostart and toast-notification AUMID registry entries.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usPostUninstall then
+  begin
     RegDeleteValue(HKEY_CURRENT_USER,
       'SOFTWARE\Microsoft\Windows\CurrentVersion\Run', 'Go2HDR');
+    RegDeleteKeyIncludingSubkeys(HKEY_CURRENT_USER,
+      'SOFTWARE\Classes\AppUserModelId\Go2HDR.App');
+  end;
 end;
 
 // VC++ check — used by [Run].

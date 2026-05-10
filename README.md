@@ -24,7 +24,9 @@ Go2HDR runs in the background and continuously monitors your screen brightness. 
 
 - **Automatic SDR adjustment** — reacts to HDR activation and brightness changes in real time
 - **Custom brightness-to-SDR curve** — tune the mapping precisely to your display and preference
+- **Import / Export curve** — save and restore custom SDR curves as JSON presets
 - **Live dashboard** — shows current brightness, SDR level, and luminance at a glance
+- **Update notifications** — optional startup check; shows a Windows toast and a dashboard banner when a new version is available
 - **System tray** — runs quietly in the background; double-click the tray icon to restore
 - **Autostart with Windows** — optional, toggled from the Settings page
 - **Minimize to tray** — closing the window keeps it running; fully exits from the tray menu
@@ -119,7 +121,7 @@ Screen brightness changes are detected via WMI (`WmiMonitorBrightness`). An even
 
 ### HDR state detection
 
-HDR activation is detected by polling `DisplayConfigGetDeviceInfo` (`DC_GET_ADVANCED_COLOR_INFO`) on a configurable interval (default: 2 s). When HDR turns on or the app starts with HDR active, the SDR level is applied immediately.
+HDR activation is detected instantly via Windows display messages — no polling timer is involved. The app hooks `WM_DISPLAYCHANGE`, which Windows broadcasts whenever the display configuration changes (HDR on/off, resolution change, new monitor). When waking from sleep, `WM_POWERBROADCAST` (`PBT_APMRESUMEAUTOMATIC`) triggers a re-check after a short delay to allow the driver to reinitialise. When the app starts with HDR already active, the SDR level is applied immediately.
 
 ### Brightness curve
 
@@ -141,8 +143,10 @@ Go2HDR/
 │   ├── AutostartService     Windows registry autostart
 │   ├── BrightnessService    WMI brightness watcher
 │   ├── DisplayConfigService DisplayConfig P/Invoke (HDR detection + SDR apply)
-│   ├── HdrService           Coordinator: polling, events, SDR refresh
-│   └── SettingsService      JSON persistence + curve interpolation
+│   ├── HdrService           Coordinator: WM_DISPLAYCHANGE events, SDR refresh
+│   ├── NotificationService  Windows toast notifications (AUMID + WinRT)
+│   ├── SettingsService      JSON persistence + curve interpolation
+│   └── UpdateService        GitHub releases update check
 ├── ViewModels/              MVVM ViewModels (CommunityToolkit.Mvvm)
 ├── Views/
 │   ├── Controls/CurveEditor Interactive canvas curve editor

@@ -21,9 +21,6 @@ Installer/redist/*.exe
 packages/
 .nuget/
 
-# Claude Code project settings
-.claude/
-
 # OS
 Thumbs.db
 Desktop.ini
