@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using System.Diagnostics;
+using System.Text;
 
 namespace Go2HDR.Services;
 
@@ -7,6 +8,10 @@ namespace Go2HDR.Services;
 // Experience) intentionally delays all HKCU\Run entries until the user first opens the
 // desktop — meaning Go2HDR would never start in Xbox Mode.  Task Scheduler "At logon"
 // tasks are dispatched by the Schedule service before FSE applies its startup filter.
+//
+// PowerShell Register-ScheduledTask is used instead of schtasks.exe because
+// "schtasks /create /sc onlogon" without an explicit /ru flag fails on Windows 11
+// (requires elevation or prompts for credentials), causing the toggle to bounce back.
 public class AutostartService
 {
     private const string RunKey   = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
@@ -42,37 +47,62 @@ public class AutostartService
 
     private static bool IsTaskInstalled()
     {
-        try
-        {
-            using var p = Process.Start(Schtasks("/query", "/tn", TaskName, "/fo", "list"))!;
-            p.WaitForExit(3000);
-            return p.ExitCode == 0;
-        }
-        catch { return false; }
+        const string script = """
+            $t = Get-ScheduledTask -TaskName 'Go2HDR' -ErrorAction SilentlyContinue
+            if ($t) { exit 0 } else { exit 1 }
+            """;
+        return RunPowerShell(script);
     }
 
     private static bool CreateTask()
     {
-        try
-        {
-            // /it         = run only in the user's interactive session
-            // /rl limited = standard (non-elevated) privileges
-            // /f          = overwrite existing task with the same name
-            using var p = Process.Start(
-                Schtasks("/create", "/tn", TaskName, "/tr", ExePath,
-                         "/sc", "onlogon", "/it", "/rl", "limited", "/f"))!;
-            p.WaitForExit(5000);
-            return p.ExitCode == 0;
-        }
-        catch { return false; }
+        var exe = ExePath.Replace("'", "''"); // escape single quotes for PowerShell
+        var script = $$"""
+            try {
+                $action   = New-ScheduledTaskAction -Execute '{{exe}}'
+                $trigger  = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+                $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+                Register-ScheduledTask -TaskName 'Go2HDR' -Action $action -Trigger $trigger -Settings $settings -RunLevel Limited -Force -ErrorAction Stop | Out-Null
+                exit 0
+            } catch {
+                exit 1
+            }
+            """;
+        return RunPowerShell(script);
     }
 
     private static bool DeleteTask()
     {
+        const string script = """
+            Unregister-ScheduledTask -TaskName 'Go2HDR' -Confirm:$false -ErrorAction SilentlyContinue
+            exit 0
+            """;
+        return RunPowerShell(script);
+    }
+
+    private static bool RunPowerShell(string script)
+    {
         try
         {
-            using var p = Process.Start(Schtasks("/delete", "/tn", TaskName, "/f"))!;
-            p.WaitForExit(5000);
+            var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
+            var psi = new ProcessStartInfo("powershell.exe")
+            {
+                CreateNoWindow         = true,
+                UseShellExecute        = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError  = true,
+            };
+            psi.ArgumentList.Add("-NonInteractive");
+            psi.ArgumentList.Add("-WindowStyle");
+            psi.ArgumentList.Add("Hidden");
+            psi.ArgumentList.Add("-EncodedCommand");
+            psi.ArgumentList.Add(encoded);
+            using var p = Process.Start(psi)!;
+            if (!p.WaitForExit(10_000))
+            {
+                p.Kill();
+                return false;
+            }
             return p.ExitCode == 0;
         }
         catch { return false; }
@@ -98,20 +128,5 @@ public class AutostartService
             key?.DeleteValue(AppName, throwOnMissingValue: false);
         }
         catch { }
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private static ProcessStartInfo Schtasks(params string[] args)
-    {
-        var psi = new ProcessStartInfo("schtasks")
-        {
-            CreateNoWindow         = true,
-            UseShellExecute        = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError  = true,
-        };
-        foreach (var a in args) psi.ArgumentList.Add(a);
-        return psi;
     }
 }
