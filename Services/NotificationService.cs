@@ -15,6 +15,9 @@ public class NotificationService
             using var key = Registry.CurrentUser.CreateSubKey(
                 $@"SOFTWARE\Classes\AppUserModelId\{AppId}");
             key.SetValue("DisplayName", "Go2HDR");
+            var exe = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(exe))
+                key.SetValue("IconUri", exe);
         }
         catch { }
     }

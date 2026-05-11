@@ -21,18 +21,34 @@ public partial class SdrCurveViewModel : ObservableObject
     [ObservableProperty] private CurvePoint? _selectedPoint;
     [ObservableProperty] private int _minimumBrightness;
     [ObservableProperty] private int _pendingMinBrightness;
+    [ObservableProperty] private bool _isHdrActive;
+    [ObservableProperty] private byte _currentBrightness;
 
-    public SdrCurveViewModel(SettingsService settings)
+    public CurvePoint? ActivePoint => IsHdrActive
+        ? CurvePoints.FirstOrDefault(p => (int)Math.Round(p.Brightness) == CurrentBrightness)
+        : null;
+
+    public SdrCurveViewModel(SettingsService settings, HdrService hdr, BrightnessService brightness)
     {
         _settings = settings;
         _saveDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
         _saveDebounce.Tick += (_, _) => { _saveDebounce.Stop(); SaveCurve(); };
+
+        hdr.HdrStateChanged   += active => Application.Current.Dispatcher.InvokeAsync(() => IsHdrActive = active);
+        hdr.BrightnessChanged += b      => Application.Current.Dispatcher.InvokeAsync(() => CurrentBrightness = b);
+
 #pragma warning disable MVVMTK0034
         _minimumBrightness    = _settings.Current.MinimumBrightness;
         _pendingMinBrightness = _settings.Current.MinimumBrightness;
+        _isHdrActive = hdr.IsHdrActive;
+        if (_isHdrActive)
+            _currentBrightness = brightness.GetCurrentBrightness();
 #pragma warning restore MVVMTK0034
         LoadFromSettings();
     }
+
+    partial void OnIsHdrActiveChanged(bool value)  => OnPropertyChanged(nameof(ActivePoint));
+    partial void OnCurrentBrightnessChanged(byte value) => OnPropertyChanged(nameof(ActivePoint));
 
     private void LoadFromSettings()
     {

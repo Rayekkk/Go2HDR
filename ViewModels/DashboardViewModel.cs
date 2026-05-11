@@ -76,6 +76,7 @@ public partial class DashboardViewModel : ObservableObject
 
         hdr.HdrStateChanged   += OnHdrStateChanged;
         hdr.BrightnessChanged += OnBrightnessChanged;
+        settings.Saved        += OnSettingsSaved;
 
         update.NewVersionFound += r => Application.Current.Dispatcher.InvokeAsync(() =>
         {
@@ -144,5 +145,15 @@ public partial class DashboardViewModel : ObservableObject
             CurrentBrightness = b;
             CurrentSdrValue   = _settings.GetSdrValue(b);
             CurrentNits       = SettingsService.SdrValueToNits(CurrentSdrValue);
+        });
+
+    // Refresh derived properties that read from settings — called whenever settings are saved
+    // (curve edits, MinimumBrightness change, reset). Keeps the Dashboard curve card in sync
+    // with changes made on SdrCurvePage without requiring a page reload.
+    private void OnSettingsSaved() =>
+        Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            OnPropertyChanged(nameof(SdrRangeText));
+            OnPropertyChanged(nameof(MinBrightness));
         });
 }

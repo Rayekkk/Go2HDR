@@ -45,6 +45,7 @@
                     IsReadOnly="True"
                     Points="{Binding CurvePoints}"
                     SelectedPoint="{Binding SelectedPoint, Mode=TwoWay}"
+                    ActivePoint="{Binding ActivePoint, Mode=OneWay}"
                     MinBrightness="{Binding MinimumBrightness}"
                     Margin="0,8,0,4"/>
             </ui:CardExpander>
@@ -63,11 +64,9 @@
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="Minimum brightness:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <ui:NumberBox
+                        <ctrl:SdrSpinner
                             Value="{Binding PendingMinBrightness, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             Minimum="1" Maximum="80"
-                            SmallChange="1" LargeChange="5"
-                            SpinButtonPlacementMode="Inline"
                             Width="130"/>
                         <TextBlock Text="% → SDR 0 (80 nits)"
                                    VerticalAlignment="Center" Margin="10,0,12,0" Opacity="0.65" FontSize="12"/>
@@ -95,51 +94,72 @@
 
         </StackPanel>
 
-        <!-- Table with native DataGrid scrolling -->
+        <!-- Table: sticky header + recycling ListBox (only visible rows materialized) -->
         <ui:Card Grid.Row="1" Padding="0" Margin="24,0,24,24">
-            <DataGrid
-                ItemsSource="{Binding Source={StaticResource PointsDesc}}"
-                SelectedItem="{Binding SelectedPoint, Mode=TwoWay}"
-                AutoGenerateColumns="False"
-                CanUserAddRows="False"
-                CanUserDeleteRows="False"
-                SelectionMode="Single"
-                GridLinesVisibility="Horizontal"
-                HeadersVisibility="Column"
-                BorderThickness="0"
-                Background="Transparent"
-                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                ScrollViewer.VerticalScrollBarVisibility="Auto"
-                VirtualizingPanel.ScrollUnit="Pixel"
-                IsReadOnly="True">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Brightness (%)"
-                        Binding="{Binding Brightness, StringFormat={}{0:F0}}"
-                        IsReadOnly="True"
-                        Width="*"/>
-                    <DataGridTemplateColumn Header="SDR Level" Width="*" IsReadOnly="True">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type models:CurvePoint}">
-                                <ui:NumberBox
-                                    Value="{Binding SdrValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                    Minimum="0" Maximum="100"
-                                    SmallChange="1" LargeChange="5"
-                                    SpinButtonPlacementMode="Inline"
-                                    Margin="2,1"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Luminance (nits)" Width="*" IsReadOnly="True">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type models:CurvePoint}">
-                                <TextBlock
-                                    Text="{Binding SdrValue, Converter={StaticResource SdrToNitsConverter}}"
-                                    Margin="4,0" VerticalAlignment="Center"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                </DataGrid.Columns>
-            </DataGrid>
+            <DockPanel>
+
+                <!-- Column headers — outside the scrolling ListBox so they stay pinned -->
+                <Border DockPanel.Dock="Top"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="0,0,0,1"
+                        Padding="16,6">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Brightness (%)"   FontSize="12" FontWeight="SemiBold" Opacity="0.75" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="SDR Level"        FontSize="12" FontWeight="SemiBold" Opacity="0.75"/>
+                        <TextBlock Grid.Column="2" Text="Luminance (nits)" FontSize="12" FontWeight="SemiBold" Opacity="0.75" HorizontalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
+                <!-- Rows: VirtualizationMode=Recycling keeps containers alive across
+                     scroll and re-navigation — only DataContext is swapped, no re-templating -->
+                <ListBox
+                    ItemsSource="{Binding Source={StaticResource PointsDesc}}"
+                    SelectedItem="{Binding SelectedPoint, Mode=TwoWay}"
+                    VirtualizingPanel.VirtualizationMode="Recycling"
+                    VirtualizingPanel.ScrollUnit="Pixel"
+                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                    ScrollViewer.PanningMode="VerticalFirst"
+                    BorderThickness="0"
+                    Background="Transparent"
+                    HorizontalContentAlignment="Stretch"
+                    Padding="0">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                            <Setter Property="Padding" Value="16,4"/>
+                            <Setter Property="MinHeight" Value="36"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
+                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:CurvePoint}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding Brightness, StringFormat={}{0:F0}}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <ctrl:SdrSpinner Grid.Column="1"
+                                                 Value="{Binding SdrValue, Mode=TwoWay}"
+                                                 Margin="0,1,8,1"/>
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding SdrValue, Converter={StaticResource SdrToNitsConverter}}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+            </DockPanel>
         </ui:Card>
 
     </Grid>

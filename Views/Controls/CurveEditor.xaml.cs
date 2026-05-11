@@ -23,6 +23,7 @@ public partial class CurveEditor : UserControl
     private static readonly SolidColorBrush GridFaint  = MakeFrozen(Color.FromArgb(40, 128, 128, 128));
     private static readonly SolidColorBrush GridMedium = MakeFrozen(Color.FromArgb(90, 128, 128, 128));
     private static readonly DoubleCollection GridDash  = MakeFrozenDash(3, 3);
+    private static readonly DoubleCollection ActiveDash = MakeFrozenDash(4, 3);
     private static readonly FontFamily       SegoeUI   = new("Segoe UI");
 
     private static SolidColorBrush MakeFrozen(Color c)
@@ -53,6 +54,9 @@ public partial class CurveEditor : UserControl
     // Point Ellipses — pooled by CurvePoint to avoid recreation every Redraw.
     private readonly Dictionary<CurvePoint, Ellipse> _pointEllipses = [];
 
+    // Single overlay ring that tracks the live-brightness ActivePoint.
+    private Ellipse? _activeRing;
+
     // ── Dependency Properties ──────────────────────────────────────────────
 
     public static readonly DependencyProperty PointsProperty =
@@ -75,6 +79,10 @@ public partial class CurveEditor : UserControl
     public static readonly DependencyProperty MinBrightnessProperty =
         DependencyProperty.Register(nameof(MinBrightness), typeof(double), typeof(CurveEditor),
             new PropertyMetadata(0.0, (d, _) => ((CurveEditor)d).Redraw()));
+
+    public static readonly DependencyProperty ActivePointProperty =
+        DependencyProperty.Register(nameof(ActivePoint), typeof(CurvePoint), typeof(CurveEditor),
+            new PropertyMetadata(null, (d, _) => ((CurveEditor)d).Redraw()));
 
     public bool IsReadOnly
     {
@@ -106,16 +114,15 @@ public partial class CurveEditor : UserControl
         set => SetValue(MinBrightnessProperty, value);
     }
 
+    public CurvePoint? ActivePoint
+    {
+        get => (CurvePoint?)GetValue(ActivePointProperty);
+        set => SetValue(ActivePointProperty, value);
+    }
+
     public event EventHandler?             CurveMoved;
     public event EventHandler<CurvePoint>? AddPointRequested;
     public event EventHandler<CurvePoint>? RemovePointRequested;
-
-    internal void ForceRedrawNow()
-    {
-        _redrawDebounce.Stop();
-        EnsurePersistentElements(); // pre-create canvas children even without valid layout
-        if (ActualWidth >= 1) RedrawCore();
-    }
 
     // ── Constructor ────────────────────────────────────────────────────────
 
@@ -218,6 +225,29 @@ public partial class CurveEditor : UserControl
             if (_curvePolyline != null) _curvePolyline.Visibility = Visibility.Collapsed;
         }
         UpdatePoints(visible);
+        UpdateActiveIndicator();
+    }
+
+    void UpdateActiveIndicator()
+    {
+        if (_activeRing == null) return;
+
+        var ap = ActivePoint;
+        if (ap == null || !ShowPoints || Points == null ||
+            ap.Brightness < MinBrightness || ap.Brightness > 100)
+        {
+            _activeRing.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var cp = ToCanvas(ap);
+        const double r = 13;
+        _activeRing.Stroke     = AccentBrush();
+        _activeRing.Width      = r * 2;
+        _activeRing.Height     = r * 2;
+        _activeRing.Visibility = Visibility.Visible;
+        Canvas.SetLeft(_activeRing, cp.X - r);
+        Canvas.SetTop(_activeRing, cp.Y - r);
     }
 
     // Creates all static canvas elements exactly once; subsequent calls are no-ops.
@@ -267,6 +297,17 @@ public partial class CurveEditor : UserControl
         };
         Panel.SetZIndex(_curvePolyline, 3);
         MainCanvas.Children.Add(_curvePolyline);
+
+        _activeRing = new Ellipse
+        {
+            IsHitTestVisible  = false,
+            Fill              = Brushes.Transparent,
+            StrokeThickness   = 2,
+            StrokeDashArray   = ActiveDash,
+            Visibility        = Visibility.Collapsed
+        };
+        Panel.SetZIndex(_activeRing, 11);
+        MainCanvas.Children.Add(_activeRing);
 
         _persistentElementsReady = true;
     }

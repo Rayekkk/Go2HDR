@@ -1,5 +1,5 @@
 #define AppName      "Go2HDR"
-#define AppVersion   "2.1.1"
+#define AppVersion   "2.1.2"
 #define AppPublisher "Go2HDR"
 #define AppExeName   "Go2HDR.exe"
 #define SourceDir    "..\bin\Publish"

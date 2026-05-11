@@ -6,7 +6,7 @@
     xmlns:ctrl="clr-namespace:Go2HDR.Views.Controls"
     TextElement.Foreground="{DynamicResource TextFillColorPrimaryBrush}">
 
-    <ScrollViewer x:Name="RootScroller" VerticalScrollBarVisibility="Auto">
+    <ScrollViewer x:Name="RootScroller" VerticalScrollBarVisibility="Auto" PanningMode="VerticalFirst">
         <StackPanel Margin="24,16,24,24" MaxWidth="900">
 
             <!-- ── Update banner (visible only when an update is available) ── -->

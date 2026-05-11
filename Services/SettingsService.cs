@@ -39,6 +39,8 @@ public class SettingsService
         _sortedPoints = null;
     }
 
+    public event Action? Saved;
+
     public void Save()
     {
         try
@@ -48,6 +50,7 @@ public class SettingsService
         }
         catch { }
         _sortedPoints = null;
+        Saved?.Invoke();
     }
 
     public int GetSdrValue(byte brightness)

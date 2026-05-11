@@ -76,7 +76,6 @@ public partial class App : Application
 
         ApplyTheme(settings.Current.Theme);
 
-        // Keep autostart registry entry pointing to the current exe (handles in-place updates).
         Services.GetRequiredService<AutostartService>().SyncPath();
 
         var hdr = Services.GetRequiredService<HdrService>();
@@ -94,8 +93,8 @@ public partial class App : Application
 
         if (settings.Current.StartMinimized)
         {
-            // Show briefly so the window handle and tray icon are initialised, then hide.
             window.ShowInTaskbar = false;
+            window.WindowState = WindowState.Minimized;
             window.Show();
             window.Hide();
         }

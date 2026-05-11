@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 
 namespace Go2HDR.Services;
@@ -45,13 +46,18 @@ public class AutostartService
 
     // ── Task Scheduler ────────────────────────────────────────────────────────
 
+    // Check via the XML file that Register-ScheduledTask writes to %windir%\System32\Tasks\.
+    // This avoids spawning powershell.exe (which takes 500–1500 ms) on every startup.
     private static bool IsTaskInstalled()
     {
-        const string script = """
-            $t = Get-ScheduledTask -TaskName 'Go2HDR' -ErrorAction SilentlyContinue
-            if ($t) { exit 0 } else { exit 1 }
-            """;
-        return RunPowerShell(script);
+        try
+        {
+            string taskFile = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.System),
+                "Tasks", TaskName);
+            return File.Exists(taskFile);
+        }
+        catch { return false; }
     }
 
     private static bool CreateTask()
@@ -61,7 +67,7 @@ public class AutostartService
             try {
                 $action   = New-ScheduledTaskAction -Execute '{{exe}}'
                 $trigger  = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
-                $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+                $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0)
                 Register-ScheduledTask -TaskName 'Go2HDR' -Action $action -Trigger $trigger -Settings $settings -RunLevel Limited -Force -ErrorAction Stop | Out-Null
                 exit 0
             } catch {

@@ -1,0 +1,94 @@
+<UserControl
+    x:Class="Go2HDR.Views.Controls.SdrSpinner"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Height="28"
+    VerticalAlignment="Center">
+
+    <UserControl.Resources>
+        <!-- Minimal flat RepeatButton — no WPF-UI dependency, much lighter to instantiate -->
+        <ControlTemplate x:Key="SpinBtnTpl" TargetType="RepeatButton">
+            <Border x:Name="Bd" Background="Transparent">
+                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="Bd" Property="Background"
+                            Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter TargetName="Bd" Property="Background"
+                            Value="{DynamicResource SubtleFillColorTertiaryBrush}"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.38"/>
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <!-- Borderless TextBox — no chrome, only the editing scroller -->
+        <ControlTemplate x:Key="SpinTextTpl" TargetType="TextBox">
+            <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}"/>
+        </ControlTemplate>
+    </UserControl.Resources>
+
+    <Border BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="4"
+            Background="{DynamicResource ControlFillColorDefaultBrush}"
+            ClipToBounds="True">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="1"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBox
+                x:Name="ValueBox"
+                Grid.Column="0"
+                Template="{StaticResource SpinTextTpl}"
+                Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                CaretBrush="{DynamicResource TextFillColorPrimaryBrush}"
+                SelectionBrush="{DynamicResource SystemAccentColorPrimaryBrush}"
+                Background="Transparent"
+                TextAlignment="Left"
+                VerticalContentAlignment="Center"
+                Padding="10,0,4,0"
+                FontSize="13"
+                TextChanged="OnTextChanged"
+                LostFocus="OnLostFocus"
+                PreviewKeyDown="OnKeyDown"
+                PreviewMouseWheel="OnMouseWheel"/>
+
+            <!-- Vertical separator between text area and spin buttons -->
+            <Rectangle Grid.Column="1"
+                       Fill="{DynamicResource ControlStrokeColorDefaultBrush}"/>
+
+            <!-- Side-by-side square chevron buttons at the right edge -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <RepeatButton
+                    x:Name="IncrBtn"
+                    Width="28" Height="28"
+                    Template="{StaticResource SpinBtnTpl}"
+                    Click="OnIncrement">
+                    <TextBlock Text="&#xE70E;"
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </RepeatButton>
+                <RepeatButton
+                    x:Name="DecrBtn"
+                    Width="28" Height="28"
+                    Template="{StaticResource SpinBtnTpl}"
+                    Click="OnDecrement">
+                    <TextBlock Text="&#xE70D;"
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                </RepeatButton>
+            </StackPanel>
+
+        </Grid>
+    </Border>
+</UserControl>
