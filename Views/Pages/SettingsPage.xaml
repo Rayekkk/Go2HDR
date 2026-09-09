@@ -41,21 +41,12 @@
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="Start with Windows" FontWeight="SemiBold" FontSize="14"/>
-                        <TextBlock FontSize="12" Opacity="0.7" Margin="0,3,0,0" TextWrapping="Wrap">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Text" Value="Start Go2HDR automatically when you log into Windows."/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding AutostartInstalled}" Value="True">
-                                            <Setter Property="Text" Value="Go2HDR will start automatically at login."/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
+                        <TextBlock Text="{Binding AutostartStatusText}"
+                                   FontSize="12" Opacity="0.7" Margin="0,3,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                     <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
-                                     IsChecked="{Binding AutostartInstalled}"/>
+                                     IsChecked="{Binding AutostartInstalled}"
+                                     IsEnabled="{Binding CanChangeAutostart}"/>
                 </Grid>
             </ui:Card>
 
@@ -154,7 +145,7 @@
                     </Grid.ColumnDefinitions>
 
                     <Image Width="48" Height="48" Margin="0,0,16,0"
-                           Source="pack://application:,,,/Assets/Go2HDR_About.png"
+                           Source="pack://application:,,,/Go2HDR.png"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">

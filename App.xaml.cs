@@ -2,7 +2,6 @@ using Go2HDR.Services;
 using Go2HDR.ViewModels;
 using Go2HDR.Views.Pages;
 using Microsoft.Extensions.DependencyInjection;
-using System.IO;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
@@ -13,28 +12,16 @@ namespace Go2HDR;
 public partial class App : Application
 {
     private static Mutex? _mutex;
+    private static bool _ownsMutex;
+    private ServiceProvider? _serviceProvider;
     public static IServiceProvider Services { get; private set; } = null!;
-
-    private static readonly string LogPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Go2HDR", "crash.log");
-
-    private static void Log(string message)
-    {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
-            File.AppendAllText(LogPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}");
-        }
-        catch { }
-    }
 
     protected override void OnStartup(StartupEventArgs e)
     {
         AppDomain.CurrentDomain.UnhandledException +=
-            (_, ex) => Log($"UnhandledException: {ex.ExceptionObject}");
+            (_, ex) => AppLog.Write($"UnhandledException: {ex.ExceptionObject}");
         DispatcherUnhandledException +=
-            (_, ex) => { Log($"DispatcherUnhandledException: {ex.Exception}"); ex.Handled = true; };
+            (_, ex) => AppLog.Write("DispatcherUnhandledException", ex.Exception);
 
         try
         {
@@ -42,8 +29,8 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            Log($"Startup failed: {ex}");
-            MessageBox.Show($"Go2HDR failed to start.\n\nDetails saved to:\n{LogPath}",
+            AppLog.Write("Startup failed.", ex);
+            MessageBox.Show($"Go2HDR failed to start.\n\nDetails saved to:\n{AppLog.Path}",
                 "Go2HDR", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown();
         }
@@ -53,6 +40,7 @@ public partial class App : Application
     {
         _mutex = new Mutex(true, "Go2HDR_SingleInstance", out bool isNew);
         if (!isNew) { Shutdown(); return; }
+        _ownsMutex = true;
 
         var sc = new ServiceCollection();
         sc.AddSingleton<SettingsService>();
@@ -69,14 +57,15 @@ public partial class App : Application
         sc.AddSingleton<SdrCurvePage>();
         sc.AddSingleton<SettingsPage>();
         sc.AddSingleton<MainWindow>();
-        Services = sc.BuildServiceProvider();
+        _serviceProvider = sc.BuildServiceProvider();
+        Services = _serviceProvider;
 
-        var settings  = Services.GetRequiredService<SettingsService>();
+        var settings = Services.GetRequiredService<SettingsService>();
         settings.Load();
 
         ApplyTheme(settings.Current.Theme);
 
-        Services.GetRequiredService<AutostartService>().SyncPath();
+        _ = Services.GetRequiredService<AutostartService>().SyncPathAsync();
 
         var hdr = Services.GetRequiredService<HdrService>();
         hdr.Start();
@@ -85,7 +74,7 @@ public partial class App : Application
         {
             var notifySvc = Services.GetRequiredService<NotificationService>();
             var updateSvc = Services.GetRequiredService<UpdateService>();
-            updateSvc.NewVersionFound += r => notifySvc.ShowUpdateAvailable(r.LatestVersion, r.ReleaseUrl);
+            updateSvc.NewVersionFound += r => notifySvc.ShowUpdateAvailable(r.LatestVersion, r.ReleaseUri);
             _ = updateSvc.CheckAsync();
         }
 
@@ -108,9 +97,15 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        Services.GetRequiredService<HdrService>().Dispose();
-        _mutex?.ReleaseMutex();
+        _serviceProvider?.Dispose();
+        _serviceProvider = null;
+        if (_ownsMutex && _mutex is not null)
+        {
+            _mutex.ReleaseMutex();
+            _ownsMutex = false;
+        }
         _mutex?.Dispose();
+        _mutex = null;
         base.OnExit(e);
     }
 
@@ -119,7 +114,7 @@ public partial class App : Application
         ApplicationThemeManager.Apply(theme switch
         {
             "Light" => ApplicationTheme.Light,
-            "Dark"  => ApplicationTheme.Dark,
+            "Dark" => ApplicationTheme.Dark,
             _ => ApplicationThemeManager.GetSystemTheme() == SystemTheme.Dark
                     ? ApplicationTheme.Dark : ApplicationTheme.Light
         });

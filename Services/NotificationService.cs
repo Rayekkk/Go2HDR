@@ -19,14 +19,18 @@ public class NotificationService
             if (!string.IsNullOrEmpty(exe))
                 key.SetValue("IconUri", exe);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            AppLog.Write("Registering toast notifications failed.", ex);
+        }
     }
 
-    public void ShowUpdateAvailable(string version, string releaseUrl)
+    public void ShowUpdateAvailable(string version, Uri releaseUri)
     {
         try
         {
-            var escapedUrl     = System.Security.SecurityElement.Escape(releaseUrl) ?? releaseUrl;
+            string releaseUrl = releaseUri.AbsoluteUri;
+            var escapedUrl = System.Security.SecurityElement.Escape(releaseUrl) ?? releaseUrl;
             var escapedVersion = System.Security.SecurityElement.Escape(version) ?? version;
 
             var xml = $"""
@@ -45,6 +49,9 @@ public class NotificationService
             var notifier = ToastNotificationManager.CreateToastNotifier(AppId);
             notifier.Show(new ToastNotification(doc));
         }
-        catch { }
+        catch (Exception ex)
+        {
+            AppLog.Write("Showing the update notification failed.", ex);
+        }
     }
 }

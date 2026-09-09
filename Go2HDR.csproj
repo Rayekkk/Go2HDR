@@ -2,22 +2,29 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Assets\Go2HDR.ico</ApplicationIcon>
     <Version>2.1.2</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Company>Go2HDR</Company>
     <Product>Go2HDR</Product>
     <Description>Automatic SDR brightness compensation for HDR displays</Description>
     <Copyright>Copyright © 2025</Copyright>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CA1822;CA1859</NoWarn>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
-    <PackageReference Include="System.Management" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+    <PackageReference Include="System.Management" Version="10.0.12" />
     <PackageReference Include="WPF-UI" Version="4.3.0" />
     <PackageReference Include="WPF-UI.Abstractions" Version="4.3.0" />
     <PackageReference Include="WPF-UI.DependencyInjection" Version="4.3.0" />
@@ -26,7 +33,13 @@
 
   <ItemGroup>
     <Resource Include="Assets\Go2HDR.ico" />
-    <Resource Include="Assets\Go2HDR_About.png" />
+    <Resource Include="Go2HDR.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Go2HDR.Tests\**\*.cs" />
+    <EmbeddedResource Remove="Go2HDR.Tests\**\*" />
+    <None Remove="Go2HDR.Tests\**\*" />
   </ItemGroup>
 
 </Project>

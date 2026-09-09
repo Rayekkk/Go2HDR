@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 
@@ -13,9 +14,20 @@ namespace Go2HDR;
 
 public partial class MainWindow : FluentWindow
 {
+    private readonly DispatcherTimer _displayRefreshTimer;
+    private bool _isExiting;
+
     public MainWindow()
     {
         InitializeComponent();
+        _displayRefreshTimer = new DispatcherTimer();
+        _displayRefreshTimer.Tick += (_, _) =>
+        {
+            _displayRefreshTimer.Stop();
+            var display = App.Services.GetRequiredService<DisplayConfigService>();
+            display.InvalidateCache();
+            App.Services.GetRequiredService<HdrService>().Poll(forceRefresh: true);
+        };
         SystemThemeWatcher.Watch(this);
         Loaded += (_, _) =>
         {
@@ -25,10 +37,10 @@ public partial class MainWindow : FluentWindow
         AddHandler(UIElement.PreviewMouseWheelEvent, new MouseWheelEventHandler(OnPreviewMouseWheel), handledEventsToo: true);
     }
 
-    private const int WM_DISPLAYCHANGE       = 0x007E;
-    private const int WM_POWERBROADCAST      = 0x0218;
+    private const int WM_DISPLAYCHANGE = 0x007E;
+    private const int WM_POWERBROADCAST = 0x0218;
     private const int PBT_APMRESUMEAUTOMATIC = 0x0012;
-    private const int PBT_APMRESUMESUSPEND   = 0x0007;
+    private const int PBT_APMRESUMESUSPEND = 0x0007;
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -41,23 +53,25 @@ public partial class MainWindow : FluentWindow
     {
         if (msg == WM_DISPLAYCHANGE)
         {
-            var display = App.Services.GetRequiredService<DisplayConfigService>();
-            var hdr     = App.Services.GetRequiredService<HdrService>();
-            display.InvalidateCache();
-            hdr.Poll();
+            ScheduleDisplayRefresh(TimeSpan.FromMilliseconds(350));
         }
         else if (msg == WM_POWERBROADCAST)
         {
             int ev = wParam.ToInt32();
             if (ev == PBT_APMRESUMEAUTOMATIC || ev == PBT_APMRESUMESUSPEND)
             {
-                var display = App.Services.GetRequiredService<DisplayConfigService>();
-                var hdr     = App.Services.GetRequiredService<HdrService>();
-                display.InvalidateCache();
-                _ = Task.Delay(1000).ContinueWith(_ => Dispatcher.Invoke(hdr.Poll));
+                ScheduleDisplayRefresh(TimeSpan.FromSeconds(1));
             }
         }
         return IntPtr.Zero;
+    }
+
+    private void ScheduleDisplayRefresh(TimeSpan delay)
+    {
+        App.Services.GetRequiredService<DisplayConfigService>().InvalidateCache();
+        _displayRefreshTimer.Stop();
+        _displayRefreshTimer.Interval = delay;
+        _displayRefreshTimer.Start();
     }
 
     private void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -91,6 +105,7 @@ public partial class MainWindow : FluentWindow
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        if (_isExiting) return;
         var settings = App.Services.GetRequiredService<SettingsService>();
         if (settings.Current.MinimizeToTray)
         {
@@ -113,11 +128,13 @@ public partial class MainWindow : FluentWindow
         ShowInTaskbar = true;
         Activate();
         App.Services.GetRequiredService<DisplayConfigService>().InvalidateCache();
-        App.Services.GetRequiredService<HdrService>().Poll();
+        App.Services.GetRequiredService<HdrService>().Poll(forceRefresh: true);
     }
 
     private void OnTrayExit(object sender, RoutedEventArgs e)
     {
+        _isExiting = true;
+        _displayRefreshTimer.Stop();
         TrayIcon.Unregister();
         Application.Current.Shutdown();
     }

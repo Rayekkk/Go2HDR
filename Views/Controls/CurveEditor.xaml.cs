@@ -13,18 +13,18 @@ namespace Go2HDR.Views.Controls;
 public partial class CurveEditor : UserControl
 {
     const double PadL = 52, PadR = 16, PadT = 16, PadB = 44;
-    double PlotW => Math.Max(1, ActualWidth  - PadL - PadR);
+    double PlotW => Math.Max(1, ActualWidth - PadL - PadR);
     double PlotH => Math.Max(1, ActualHeight - PadT - PadB);
 
     CurvePoint? _dragPoint;
-    bool        _dragIsEndpoint;
+    bool _dragIsEndpoint;
 
     // Frozen static brushes / collections — allocated once, shared across all instances and redraws.
-    private static readonly SolidColorBrush GridFaint  = MakeFrozen(Color.FromArgb(40, 128, 128, 128));
+    private static readonly SolidColorBrush GridFaint = MakeFrozen(Color.FromArgb(40, 128, 128, 128));
     private static readonly SolidColorBrush GridMedium = MakeFrozen(Color.FromArgb(90, 128, 128, 128));
-    private static readonly DoubleCollection GridDash  = MakeFrozenDash(3, 3);
+    private static readonly DoubleCollection GridDash = MakeFrozenDash(3, 3);
     private static readonly DoubleCollection ActiveDash = MakeFrozenDash(4, 3);
-    private static readonly FontFamily       SegoeUI   = new("Segoe UI");
+    private static readonly FontFamily SegoeUI = new("Segoe UI");
 
     private static SolidColorBrush MakeFrozen(Color c)
     { var b = new SolidColorBrush(c); b.Freeze(); return b; }
@@ -32,23 +32,23 @@ public partial class CurveEditor : UserControl
     { var c = new DoubleCollection(d); c.Freeze(); return c; }
 
     // Per-instance accent brush cache — rebuilt only when accent colour changes.
-    private Color             _lastAccent;
-    private SolidColorBrush?  _accentBrush;
-    private SolidColorBrush?  _accentFillBrush;
+    private Color _lastAccent;
+    private SolidColorBrush? _accentBrush;
+    private SolidColorBrush? _accentFillBrush;
 
     // Debounce timer: collapses rapid batch property changes (e.g. Set All to 100) into one frame.
     private readonly DispatcherTimer _redrawDebounce;
 
     // Persistent canvas elements — created once, positions updated each Redraw.
-    private Line[]?       _gridLines;   // 22 lines (11 vertical + 11 horizontal)
-    private TextBlock[]?  _xLabels;     // 6 brightness tick labels
-    private TextBlock[]?  _yLabels;     // 6 nits tick labels
-    private TextBlock?    _xTitle;
-    private TextBlock?    _yTitle;
-    private bool          _persistentElementsReady;
+    private Line[]? _gridLines;   // 22 lines (11 vertical + 11 horizontal)
+    private TextBlock[]? _xLabels;     // 6 brightness tick labels
+    private TextBlock[]? _yLabels;     // 6 nits tick labels
+    private TextBlock? _xTitle;
+    private TextBlock? _yTitle;
+    private bool _persistentElementsReady;
 
     // Persistent curve elements — created once in EnsurePersistentElements, updated in place.
-    private Polygon?  _fillPolygon;
+    private Polygon? _fillPolygon;
     private Polyline? _curvePolyline;
 
     // Point Ellipses — pooled by CurvePoint to avoid recreation every Redraw.
@@ -120,7 +120,7 @@ public partial class CurveEditor : UserControl
         set => SetValue(ActivePointProperty, value);
     }
 
-    public event EventHandler?             CurveMoved;
+    public event EventHandler? CurveMoved;
     public event EventHandler<CurvePoint>? AddPointRequested;
     public event EventHandler<CurvePoint>? RemovePointRequested;
 
@@ -133,11 +133,11 @@ public partial class CurveEditor : UserControl
         _redrawDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         _redrawDebounce.Tick += (_, _) => { _redrawDebounce.Stop(); Redraw(); };
 
-        Loaded      += (_, _) => { _redrawDebounce.Stop(); Redraw(); };
+        Loaded += (_, _) => { _redrawDebounce.Stop(); Redraw(); };
         SizeChanged += (_, _) => { _redrawDebounce.Stop(); _redrawDebounce.Start(); };
         MainCanvas.MouseLeftButtonDown += OnCanvasMouseDown;
-        MainCanvas.MouseMove           += OnCanvasMouseMove;
-        MainCanvas.MouseLeftButtonUp   += OnCanvasMouseUp;
+        MainCanvas.MouseMove += OnCanvasMouseMove;
+        MainCanvas.MouseLeftButtonUp += OnCanvasMouseUp;
     }
 
     // ── Collection wiring ─────────────────────────────────────────────────
@@ -181,7 +181,7 @@ public partial class CurveEditor : UserControl
 
     Point ToCanvas(CurvePoint p) =>
         new(PadL + (1.0 - NormB(p.Brightness)) * PlotW,
-            PadT + (1.0 - p.SdrValue / 100.0)  * PlotH);
+            PadT + (1.0 - p.SdrValue / 100.0) * PlotH);
 
     (double b, double s) FromCanvas(Point cp) =>
     (
@@ -196,8 +196,8 @@ public partial class CurveEditor : UserControl
         var a = Accent;
         if (_accentBrush == null || _lastAccent != a)
         {
-            _lastAccent      = a;
-            _accentBrush     = new SolidColorBrush(a);      _accentBrush.Freeze();
+            _lastAccent = a;
+            _accentBrush = new SolidColorBrush(a); _accentBrush.Freeze();
             _accentFillBrush = new SolidColorBrush(Color.FromArgb(35, a.R, a.G, a.B)); _accentFillBrush.Freeze();
         }
         return _accentBrush;
@@ -221,7 +221,7 @@ public partial class CurveEditor : UserControl
             DrawCurve(visible);
         else
         {
-            if (_fillPolygon   != null) _fillPolygon.Visibility   = Visibility.Collapsed;
+            if (_fillPolygon != null) _fillPolygon.Visibility = Visibility.Collapsed;
             if (_curvePolyline != null) _curvePolyline.Visibility = Visibility.Collapsed;
         }
         UpdatePoints(visible);
@@ -242,9 +242,9 @@ public partial class CurveEditor : UserControl
 
         var cp = ToCanvas(ap);
         const double r = 13;
-        _activeRing.Stroke     = AccentBrush();
-        _activeRing.Width      = r * 2;
-        _activeRing.Height     = r * 2;
+        _activeRing.Stroke = AccentBrush();
+        _activeRing.Width = r * 2;
+        _activeRing.Height = r * 2;
         _activeRing.Visibility = Visibility.Visible;
         Canvas.SetLeft(_activeRing, cp.X - r);
         Canvas.SetTop(_activeRing, cp.Y - r);
@@ -278,7 +278,7 @@ public partial class CurveEditor : UserControl
 
         _xTitle = MakeLabel("Screen Brightness (%)", 10.5);
         _yTitle = MakeLabel("Nits", 10.5);
-        _yTitle.RenderTransform       = new RotateTransform(-90);
+        _yTitle.RenderTransform = new RotateTransform(-90);
         _yTitle.RenderTransformOrigin = new Point(0.5, 0.5);
         Panel.SetZIndex(_xTitle, 1);
         Panel.SetZIndex(_yTitle, 1);
@@ -292,19 +292,19 @@ public partial class CurveEditor : UserControl
         _curvePolyline = new Polyline
         {
             StrokeThickness = 2.5,
-            StrokeLineJoin  = PenLineJoin.Round,
-            Visibility      = Visibility.Collapsed
+            StrokeLineJoin = PenLineJoin.Round,
+            Visibility = Visibility.Collapsed
         };
         Panel.SetZIndex(_curvePolyline, 3);
         MainCanvas.Children.Add(_curvePolyline);
 
         _activeRing = new Ellipse
         {
-            IsHitTestVisible  = false,
-            Fill              = Brushes.Transparent,
-            StrokeThickness   = 2,
-            StrokeDashArray   = ActiveDash,
-            Visibility        = Visibility.Collapsed
+            IsHitTestVisible = false,
+            Fill = Brushes.Transparent,
+            StrokeThickness = 2,
+            StrokeDashArray = ActiveDash,
+            Visibility = Visibility.Collapsed
         };
         Panel.SetZIndex(_activeRing, 11);
         MainCanvas.Children.Add(_activeRing);
@@ -317,7 +317,7 @@ public partial class CurveEditor : UserControl
         for (int i = 0; i <= 10; i++)
         {
             bool major = i % 5 == 0;
-            var  br    = major ? GridMedium : GridFaint;
+            var br = major ? GridMedium : GridFaint;
             double x = PadL + i * PlotW / 10;
             double y = PadT + i * PlotH / 10;
 
@@ -337,13 +337,13 @@ public partial class CurveEditor : UserControl
         var fillPts = new PointCollection { new(ToCanvas(sorted[0]).X, PadT + PlotH) };
         foreach (var p in sorted) fillPts.Add(ToCanvas(p));
         fillPts.Add(new(ToCanvas(sorted[^1]).X, PadT + PlotH));
-        _fillPolygon!.Points    = fillPts;
-        _fillPolygon.Fill       = AccentFillBrush();
+        _fillPolygon!.Points = fillPts;
+        _fillPolygon.Fill = AccentFillBrush();
         _fillPolygon.Visibility = Visibility.Visible;
 
-        _curvePolyline!.Points     = new PointCollection(sorted.Select(ToCanvas));
-        _curvePolyline.Stroke      = AccentBrush();
-        _curvePolyline.Visibility  = Visibility.Visible;
+        _curvePolyline!.Points = new PointCollection(sorted.Select(ToCanvas));
+        _curvePolyline.Stroke = AccentBrush();
+        _curvePolyline.Visibility = Visibility.Visible;
     }
 
     // Reuses pooled Ellipses; creates or removes only when the visible set changes.
@@ -365,26 +365,26 @@ public partial class CurveEditor : UserControl
         var ab = AccentBrush();
         foreach (var pt in visible!)
         {
-            bool   selected = pt == SelectedPoint;
-            double r        = selected ? 9 : 7;
-            var    cp       = ToCanvas(pt);
+            bool selected = pt == SelectedPoint;
+            double r = selected ? 9 : 7;
+            var cp = ToCanvas(pt);
 
             if (!_pointEllipses.TryGetValue(pt, out var el))
             {
                 el = new Ellipse { Cursor = Cursors.Hand, Tag = pt };
-                el.MouseLeftButtonDown  += OnPointMouseDown;
+                el.MouseLeftButtonDown += OnPointMouseDown;
                 el.MouseRightButtonDown += OnPointRightClick;
                 Panel.SetZIndex(el, 10);
                 MainCanvas.Children.Add(el);
                 _pointEllipses[pt] = el;
             }
 
-            el.Width           = r * 2;
-            el.Height          = r * 2;
-            el.Fill            = selected ? ab : Brushes.White;
-            el.Stroke          = ab;
+            el.Width = r * 2;
+            el.Height = r * 2;
+            el.Fill = selected ? ab : Brushes.White;
+            el.Stroke = ab;
             el.StrokeThickness = selected ? 3 : 2;
-            el.ToolTip         = $"Brightness: {(int)pt.Brightness}%   SDR: {(int)pt.SdrValue}   ({pt.Nits} nits)";
+            el.ToolTip = $"Brightness: {(int)pt.Brightness}%   SDR: {(int)pt.SdrValue}   ({pt.Nits} nits)";
             Canvas.SetLeft(el, cp.X - r);
             Canvas.SetTop(el, cp.Y - r);
         }
@@ -397,14 +397,14 @@ public partial class CurveEditor : UserControl
 
         // Use pre-computed font metrics for Segoe UI 10pt to avoid calling Measure()
         // on every Redraw — those calls block the UI thread and drop animation frames.
-        const double charW  = 6.5;   // average glyph advance width (DIP)
+        const double charW = 6.5;   // average glyph advance width (DIP)
         const double labelH = 14.0;  // single-line cap height + descenders (DIP)
 
-        double range = 100.0 - MinBrightness;
+        double range = Math.Max(1, 100.0 - MinBrightness);
 
         for (int i = 0; i <= 5; i++)
         {
-            double b    = MinBrightness + i * range / 5;
+            double b = MinBrightness + i * range / 5;
             string text = $"{(int)Math.Round(b)}%";
             double canvasX = PadL + (1.0 - (b - MinBrightness) / range) * PlotW;
             var tb = _xLabels![i];
@@ -415,9 +415,9 @@ public partial class CurveEditor : UserControl
 
         for (int i = 0; i <= 5; i++)
         {
-            int    sdr    = i * 20;
-            int    nits   = 80 + sdr * 4;
-            string text   = $"{nits}";
+            int sdr = i * 20;
+            int nits = 80 + sdr * 4;
+            string text = $"{nits}";
             double canvasY = PadT + (1.0 - sdr / 100.0) * PlotH;
             var tb = _yLabels![i];
             tb.Text = text; tb.Foreground = fg;
@@ -434,7 +434,7 @@ public partial class CurveEditor : UserControl
         Canvas.SetTop(_yTitle, PadT + PlotH / 2 + _yTitle.Text.Length * 6.3 / 2);
     }
 
-    TextBlock MakeLabel(string text, double size) =>
+    static TextBlock MakeLabel(string text, double size) =>
         new() { Text = text, FontFamily = SegoeUI, FontSize = size };
 
     // ── Mouse handling ─────────────────────────────────────────────────────
@@ -443,8 +443,8 @@ public partial class CurveEditor : UserControl
     {
         if (sender is not FrameworkElement el || el.Tag is not CurvePoint pt) return;
         if (IsReadOnly) { e.Handled = true; return; }
-        SelectedPoint   = pt;
-        _dragPoint      = pt;
+        SelectedPoint = pt;
+        _dragPoint = pt;
         _dragIsEndpoint = pt.Brightness <= MinBrightness || pt.Brightness >= 100;
         Mouse.Capture(MainCanvas);
         e.Handled = true;
@@ -490,11 +490,11 @@ public partial class CurveEditor : UserControl
             var sorted = Points!.Where(p => p.Brightness >= MinBrightness && p.Brightness <= 100)
                                 .OrderBy(p => p.Brightness).ToList();
             int idx = sorted.IndexOf(_dragPoint);
-            double minB = idx > 0               ? sorted[idx - 1].Brightness + 1 : MinBrightness + 1;
+            double minB = idx > 0 ? sorted[idx - 1].Brightness + 1 : MinBrightness + 1;
             double maxB = idx < sorted.Count - 1 ? sorted[idx + 1].Brightness - 1 : 99;
             if (minB > maxB) return;
             _dragPoint.Brightness = Math.Round(Math.Clamp(b, minB, maxB));
-            _dragPoint.SdrValue   = s;
+            _dragPoint.SdrValue = s;
         }
 
         // Bypass debounce during drag — immediate visual feedback is needed.

@@ -1,8 +1,12 @@
 #define AppName      "Go2HDR"
-#define AppVersion   "2.1.2"
+#ifndef AppVersion
+  #define AppVersion "2.1.2"
+#endif
 #define AppPublisher "Go2HDR"
 #define AppExeName   "Go2HDR.exe"
-#define SourceDir    "..\bin\Publish"
+#ifndef SourceDir
+  #define SourceDir "..\bin\Publish"
+#endif
 
 [Setup]
 AppId={{B3C7A1F2-94DE-4E58-A021-6D3F80C5E49A}
@@ -15,7 +19,7 @@ DefaultGroupName={#AppName}
 OutputDir=Output
 OutputBaseFilename=Go2HDR-Setup-{#AppVersion}
 SetupIconFile=..\Assets\Go2HDR.ico
-WizardSmallImageFile=..\Assets\Go2HDR_About.png
+WizardSmallImageFile=..\Go2HDR.png
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -23,8 +27,10 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\{#AppExeName}
-MinVersion=10.0.17763
+MinVersion=10.0.26100
 CloseApplications=yes
+RestartApplications=no
+AppMutex=Go2HDR_SingleInstance
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -41,15 +47,12 @@ Name: "{group}\{#AppName}";           Filename: "{app}\{#AppExeName}"
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
 Name: "{commondesktop}\{#AppName}";   Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
-[UninstallDelete]
-Type: filesandordirs; Name: "{app}"
-
 [Run]
 Filename: "{tmp}\VC_redist.x64.exe"; Parameters: "/install /quiet /norestart"; \
   StatusMsg: "Installing Visual C++ Runtime..."; Check: VCRedistNeedsInstall; \
   Flags: waituntilterminated
 Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; \
-  Flags: nowait postinstall skipifsilent
+  Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [Code]
 
@@ -97,9 +100,14 @@ end;
 
 // After uninstall: remove autostart and toast-notification AUMID registry entries.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  ResultCode: Integer;
 begin
   if CurUninstallStep = usPostUninstall then
   begin
+    Exec(ExpandConstant('{sys}\schtasks.exe'),
+      '/Delete /TN "Go2HDR" /F', '', SW_HIDE,
+      ewWaitUntilTerminated, ResultCode);
     RegDeleteValue(HKEY_CURRENT_USER,
       'SOFTWARE\Microsoft\Windows\CurrentVersion\Run', 'Go2HDR');
     RegDeleteKeyIncludingSubkeys(HKEY_CURRENT_USER,

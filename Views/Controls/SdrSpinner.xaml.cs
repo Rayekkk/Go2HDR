@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Globalization;
 
 namespace Go2HDR.Views.Controls;
 
@@ -9,15 +10,15 @@ public partial class SdrSpinner : UserControl
     public static readonly DependencyProperty ValueProperty =
         DependencyProperty.Register(nameof(Value), typeof(double), typeof(SdrSpinner),
             new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
-                (d, _) => ((SdrSpinner)d).OnExternalValueChange()));
+                (d, _) => ((SdrSpinner)d).OnExternalValueChange(), CoerceValue));
 
     public static readonly DependencyProperty MinimumProperty =
         DependencyProperty.Register(nameof(Minimum), typeof(double), typeof(SdrSpinner),
-            new PropertyMetadata(0.0));
+            new PropertyMetadata(0.0, OnRangeChanged));
 
     public static readonly DependencyProperty MaximumProperty =
         DependencyProperty.Register(nameof(Maximum), typeof(double), typeof(SdrSpinner),
-            new PropertyMetadata(100.0));
+            new PropertyMetadata(100.0, OnRangeChanged));
 
     public double Value
     {
@@ -50,11 +51,23 @@ public partial class SdrSpinner : UserControl
 
     private void SyncText()
     {
-        string s = IntVal.ToString();
+        string s = IntVal.ToString(CultureInfo.CurrentCulture);
         if (ValueBox.Text != s) ValueBox.Text = s;
     }
 
     private int IntVal => (int)Math.Round(Value);
+
+    private static object CoerceValue(DependencyObject d, object baseValue)
+    {
+        var spinner = (SdrSpinner)d;
+        double value = (double)baseValue;
+        if (!double.IsFinite(value)) value = spinner.Minimum;
+        return Math.Clamp(value, Math.Min(spinner.Minimum, spinner.Maximum),
+            Math.Max(spinner.Minimum, spinner.Maximum));
+    }
+
+    private static void OnRangeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
+        d.CoerceValue(ValueProperty);
 
     // ── User interactions ────────────────────────────────────────────────────
 
@@ -74,7 +87,7 @@ public partial class SdrSpinner : UserControl
 
     private void OnKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Up)   { Step(+1); SyncText(); e.Handled = true; }
+        if (e.Key == Key.Up) { Step(+1); SyncText(); e.Handled = true; }
         if (e.Key == Key.Down) { Step(-1); SyncText(); e.Handled = true; }
     }
 

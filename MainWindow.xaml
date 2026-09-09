@@ -38,8 +38,8 @@
             PaneDisplayMode="Left"
             IsBackButtonVisible="Collapsed"
             IsPaneToggleVisible="True"
-            OpenPaneLength="280"
-            CompactPaneLength="40"
+            OpenPaneLength="240"
+            CompactPaneLength="48"
             IsTopSeparatorVisible="False"
             IsFooterSeparatorVisible="False"
             FrameMargin="0"
@@ -81,7 +81,7 @@
             x:Name="TitleBar"
             Title="Go2HDR">
             <ui:TitleBar.Icon>
-                <ui:ImageIcon Source="pack://application:,,,/Assets/Go2HDR_About.png"/>
+                <ui:ImageIcon Source="pack://application:,,,/Go2HDR.png"/>
             </ui:TitleBar.Icon>
         </ui:TitleBar>
 

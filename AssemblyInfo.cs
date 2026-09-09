@@ -1,4 +1,9 @@
 using System.Windows;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+[assembly: InternalsVisibleTo("Go2HDR.Tests")]
+[assembly: DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
 
 [assembly: ThemeInfo(
     ResourceDictionaryLocation.None,            //where theme specific resource dictionaries are located

@@ -13,6 +13,8 @@ namespace Go2HDR.ViewModels;
 
 public partial class SdrCurveViewModel : ObservableObject
 {
+    private const long MaximumImportBytes = 1_048_576;
+    private static readonly JsonSerializerOptions ExportJsonOptions = new() { WriteIndented = true };
     private readonly SettingsService _settings;
     private readonly DispatcherTimer _saveDebounce;
 
@@ -34,20 +36,20 @@ public partial class SdrCurveViewModel : ObservableObject
         _saveDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
         _saveDebounce.Tick += (_, _) => { _saveDebounce.Stop(); SaveCurve(); };
 
-        hdr.HdrStateChanged   += active => Application.Current.Dispatcher.InvokeAsync(() => IsHdrActive = active);
-        hdr.BrightnessChanged += b      => Application.Current.Dispatcher.InvokeAsync(() => CurrentBrightness = b);
+        hdr.HdrStateChanged += active => Application.Current.Dispatcher.InvokeAsync(() => IsHdrActive = active);
+        hdr.BrightnessChanged += b => Application.Current.Dispatcher.InvokeAsync(() => CurrentBrightness = b);
 
 #pragma warning disable MVVMTK0034
-        _minimumBrightness    = _settings.Current.MinimumBrightness;
+        _minimumBrightness = _settings.Current.MinimumBrightness;
         _pendingMinBrightness = _settings.Current.MinimumBrightness;
         _isHdrActive = hdr.IsHdrActive;
-        if (_isHdrActive)
-            _currentBrightness = brightness.GetCurrentBrightness();
+        if (_isHdrActive && brightness.TryGetCurrentBrightness(out byte currentBrightness))
+            _currentBrightness = currentBrightness;
 #pragma warning restore MVVMTK0034
         LoadFromSettings();
     }
 
-    partial void OnIsHdrActiveChanged(bool value)  => OnPropertyChanged(nameof(ActivePoint));
+    partial void OnIsHdrActiveChanged(bool value) => OnPropertyChanged(nameof(ActivePoint));
     partial void OnCurrentBrightnessChanged(byte value) => OnPropertyChanged(nameof(ActivePoint));
 
     private void LoadFromSettings()
@@ -71,7 +73,13 @@ public partial class SdrCurveViewModel : ObservableObject
 
     partial void OnMinimumBrightnessChanged(int value)
     {
-        value = Math.Clamp(value, 1, 99);
+        int clamped = Math.Clamp(value, AppSettings.MinimumAllowedBrightness,
+            AppSettings.MaximumMinimumBrightness);
+        if (value != clamped)
+        {
+            MinimumBrightness = clamped;
+            return;
+        }
 
         var below = CurvePoints.Where(p => p.Brightness < value).ToList();
         foreach (var p in below) { p.PropertyChanged -= OnPointPropertyChanged; CurvePoints.Remove(p); }
@@ -111,7 +119,7 @@ public partial class SdrCurveViewModel : ObservableObject
         // Set backing fields directly to skip OnMinimumBrightnessChanged side-effects;
         // LoadFromSettings() will rebuild CurvePoints from scratch anyway.
 #pragma warning disable MVVMTK0034
-        _minimumBrightness    = AppSettings.DefaultMinimumBrightness;
+        _minimumBrightness = AppSettings.DefaultMinimumBrightness;
         _pendingMinBrightness = AppSettings.DefaultMinimumBrightness;
 #pragma warning restore MVVMTK0034
         OnPropertyChanged(nameof(MinimumBrightness));
@@ -136,10 +144,10 @@ public partial class SdrCurveViewModel : ObservableObject
     {
         var dialog = new SaveFileDialog
         {
-            Title      = "Export SDR Curve",
-            Filter     = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+            Title = "Export SDR Curve",
+            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
             DefaultExt = ".json",
-            FileName   = "sdr_curve.json"
+            FileName = "sdr_curve.json"
         };
         if (dialog.ShowDialog() != true) return;
 
@@ -147,8 +155,18 @@ public partial class SdrCurveViewModel : ObservableObject
         {
             var pts = CurvePoints.OrderBy(p => p.Brightness)
                 .Select(p => new { brightness = (int)Math.Round(p.Brightness), sdrValue = p.SdrValue });
-            var json = JsonSerializer.Serialize(pts, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(dialog.FileName, json);
+            var json = JsonSerializer.Serialize(pts, ExportJsonOptions);
+            string temporaryPath = dialog.FileName + ".tmp";
+            try
+            {
+                File.WriteAllText(temporaryPath, json);
+                File.Move(temporaryPath, dialog.FileName, overwrite: true);
+            }
+            finally
+            {
+                try { File.Delete(temporaryPath); }
+                catch { }
+            }
         }
         catch (Exception ex)
         {
@@ -162,50 +180,66 @@ public partial class SdrCurveViewModel : ObservableObject
     {
         var dialog = new OpenFileDialog
         {
-            Title      = "Import SDR Curve",
-            Filter     = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+            Title = "Import SDR Curve",
+            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
             DefaultExt = ".json"
         };
         if (dialog.ShowDialog() != true) return;
 
         try
         {
+            if (new FileInfo(dialog.FileName).Length > MaximumImportBytes)
+                throw new FormatException("File is too large. Curve presets must be 1 MB or smaller.");
+
             var json = File.ReadAllText(dialog.FileName);
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
-            if (root.ValueKind != JsonValueKind.Array || root.GetArrayLength() < 2)
-                throw new FormatException("File must contain a JSON array with at least 2 points.");
+            if (root.ValueKind != JsonValueKind.Array || root.GetArrayLength() is < 2 or > 100)
+                throw new FormatException("File must contain a JSON array with 2 to 100 points.");
 
             var imported = new List<(int brightness, double sdrValue)>();
             foreach (var el in root.EnumerateArray())
             {
-                int    b = (int)Math.Round(el.GetProperty("brightness").GetDouble());
-                double s = Math.Clamp(el.GetProperty("sdrValue").GetDouble(), 0, 100);
-                b = Math.Clamp(b, 1, 100);
+                if (el.ValueKind != JsonValueKind.Object ||
+                    !el.TryGetProperty("brightness", out JsonElement brightnessElement) ||
+                    !el.TryGetProperty("sdrValue", out JsonElement sdrElement))
+                    throw new FormatException("Each point must contain brightness and sdrValue numbers.");
+
+                double rawBrightness = brightnessElement.GetDouble();
+                double s = sdrElement.GetDouble();
+                if (!double.IsFinite(rawBrightness) || !double.IsFinite(s))
+                    throw new FormatException("Curve values must be finite numbers.");
+
+                int b = (int)Math.Round(rawBrightness);
+                if (b is < AppSettings.MinimumAllowedBrightness or > 100 || s is < 0 or > 100)
+                    throw new FormatException("Brightness must be 1–100 and SDR level must be 0–100.");
                 imported.Add((b, s));
             }
 
+            if (imported.Select(p => p.brightness).Distinct().Count() != imported.Count)
+                throw new FormatException("Curve points must use unique brightness values.");
+
             int minB = imported.Min(p => p.brightness);
+            if (minB > AppSettings.MaximumMinimumBrightness)
+                throw new FormatException($"Minimum brightness cannot exceed {AppSettings.MaximumMinimumBrightness}%.");
 
-            foreach (var old in CurvePoints) old.PropertyChanged -= OnPointPropertyChanged;
-            CurvePoints.Clear();
+            imported.Sort((left, right) => left.brightness.CompareTo(right.brightness));
+            if (imported[^1].brightness < 100)
+                imported.Add((100, imported[^1].sdrValue));
 
-            foreach (var (b, s) in imported.OrderBy(p => p.brightness))
-            {
-                var pt = new CurvePoint(b, s);
-                pt.PropertyChanged += OnPointPropertyChanged;
-                CurvePoints.Add(pt);
-            }
+            _settings.Current.MinimumBrightness = minB;
+            _settings.Current.CurvePoints = imported
+                .Select(point => new CurvePoint(point.brightness, point.sdrValue)).ToList();
+            if (!_settings.Save())
+                throw new IOException("The imported curve could not be saved.");
 
 #pragma warning disable MVVMTK0034
-            _minimumBrightness    = minB;
+            _minimumBrightness = minB;
             _pendingMinBrightness = minB;
 #pragma warning restore MVVMTK0034
             OnPropertyChanged(nameof(MinimumBrightness));
             OnPropertyChanged(nameof(PendingMinBrightness));
-            _settings.Current.MinimumBrightness = minB;
-
-            SaveCurve();
+            LoadFromSettings();
             SelectedPoint = null;
         }
         catch (Exception ex)

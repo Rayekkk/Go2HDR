@@ -59,20 +59,20 @@
 
                     <Ellipse Grid.Column="0" Width="12" Height="12" Margin="0,0,14,0"
                              VerticalAlignment="Center"
-                             Fill="{Binding IsHdrActive, Converter={StaticResource HdrStatusColorConverter}}"/>
+                             Fill="{Binding HdrVisualState, Converter={StaticResource HdrStatusColorConverter}}"/>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock FontSize="16" FontWeight="SemiBold"
-                                   Text="{Binding HdrStatusLabel}"/>
+                                   Text="HDR display"/>
                         <TextBlock FontSize="12" Margin="0,3,0,0" Opacity="0.65" TextWrapping="Wrap"
                                    Text="{Binding StatusDescription}"/>
                     </StackPanel>
 
                     <Border Grid.Column="2" CornerRadius="4" Padding="10,3" VerticalAlignment="Center"
-                            Background="{Binding IsHdrActive, Converter={StaticResource HdrStatusBackgroundConverter}}">
+                            Background="{Binding HdrVisualState, Converter={StaticResource HdrStatusBackgroundConverter}}">
                         <TextBlock FontSize="11" FontWeight="SemiBold"
                                    Text="{Binding HdrStatusLabel}"
-                                   Foreground="{Binding IsHdrActive, Converter={StaticResource HdrStatusColorConverter}}"/>
+                                   Foreground="{Binding HdrVisualState, Converter={StaticResource HdrStatusColorConverter}}"/>
                     </Border>
                 </Grid>
             </Border>
@@ -98,7 +98,8 @@
                                    HorizontalAlignment="Center" Margin="0,6,0,8"
                                    Foreground="{DynamicResource SystemAccentColorPrimaryBrush}"/>
                         <ProgressBar Value="{Binding CurrentBrightness, Mode=OneWay}"
-                                     Minimum="0" Maximum="100" Height="4"/>
+                                     Minimum="0" Maximum="100" Height="4"
+                                     Visibility="{Binding HasLiveReading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                     </StackPanel>
                 </Border>
 
@@ -113,7 +114,8 @@
                                    HorizontalAlignment="Center" Margin="0,6,0,8"
                                    Foreground="{DynamicResource SystemAccentColorPrimaryBrush}"/>
                         <ProgressBar Value="{Binding CurrentSdrValue, Mode=OneWay}"
-                                     Minimum="0" Maximum="100" Height="4"/>
+                                     Minimum="0" Maximum="100" Height="4"
+                                     Visibility="{Binding HasLiveReading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                     </StackPanel>
                 </Border>
 
@@ -128,7 +130,8 @@
                                    HorizontalAlignment="Center" Margin="0,6,0,8"
                                    Foreground="{DynamicResource SystemAccentColorPrimaryBrush}"/>
                         <ProgressBar Value="{Binding CurrentNits, Mode=OneWay}"
-                                     Minimum="80" Maximum="480" Height="4"/>
+                                     Minimum="80" Maximum="480" Height="4"
+                                     Visibility="{Binding HasLiveReading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                     </StackPanel>
                 </Border>
             </Grid>

@@ -17,11 +17,15 @@ public partial class CurvePoint : ObservableObject
 
 public class AppSettings
 {
+    public const int MinimumAllowedBrightness = 1;
+    public const int MaximumMinimumBrightness = 80;
+    public const int DefaultMinimumBrightness = 47;
+
     public List<CurvePoint> CurvePoints { get; set; } = DefaultCurve();
     public bool MinimizeToTray { get; set; } = true;
-    public bool StartMinimized { get; set; } = false;
+    public bool StartMinimized { get; set; }
+    public bool StartWithWindows { get; set; }
     public string Theme { get; set; } = "System";
-    public const int DefaultMinimumBrightness = 47;
     public int MinimumBrightness { get; set; } = DefaultMinimumBrightness;
     public bool IsEnabled { get; set; } = true;
     public bool CheckUpdatesOnStartup { get; set; } = true;

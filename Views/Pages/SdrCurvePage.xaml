@@ -55,14 +55,8 @@
                     Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1" CornerRadius="6">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,6">
                         <TextBlock Text="Minimum brightness:" VerticalAlignment="Center" Margin="0,0,10,0"/>
                         <ctrl:SdrSpinner
                             Value="{Binding PendingMinBrightness, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -76,20 +70,31 @@
                             Command="{Binding ApplyMinBrightnessCommand}"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2" Orientation="Horizontal">
-                        <ui:Button
-                            Content="Set All to 100"
-                            Icon="{ui:SymbolIcon ArrowMaximize24}"
-                            Command="{Binding SetAllTo100Command}"
-                            Appearance="Secondary"
-                            Margin="0,0,8,0"/>
-                        <ui:Button
-                            Content="Reset to Default"
-                            Icon="{ui:SymbolIcon ArrowReset24}"
-                            Command="{Binding ResetToDefaultCommand}"
-                            Appearance="Secondary"/>
-                    </StackPanel>
-                </Grid>
+                    <ui:Button
+                        Content="Import"
+                        Icon="{ui:SymbolIcon ArrowImport24}"
+                        Command="{Binding ImportCurveCommand}"
+                        Appearance="Secondary"
+                        Margin="0,0,8,6"/>
+                    <ui:Button
+                        Content="Export"
+                        Icon="{ui:SymbolIcon ArrowExport24}"
+                        Command="{Binding ExportCurveCommand}"
+                        Appearance="Secondary"
+                        Margin="0,0,16,6"/>
+                    <ui:Button
+                        Content="Set All to 100"
+                        Icon="{ui:SymbolIcon ArrowMaximize24}"
+                        Command="{Binding SetAllTo100Command}"
+                        Appearance="Secondary"
+                        Margin="0,0,8,6"/>
+                    <ui:Button
+                        Content="Reset to Default"
+                        Icon="{ui:SymbolIcon ArrowReset24}"
+                        Command="{Binding ResetToDefaultCommand}"
+                        Appearance="Secondary"
+                        Margin="0,0,0,6"/>
+                </WrapPanel>
             </Border>
 
         </StackPanel>

@@ -10,17 +10,19 @@ namespace Go2HDR.ViewModels;
 
 public partial class DashboardViewModel : ObservableObject
 {
-    private readonly HdrService        _hdr;
-    private readonly SettingsService   _settings;
+    private readonly HdrService _hdr;
+    private readonly SettingsService _settings;
     private readonly SdrCurveViewModel _curve;
 
-    [ObservableProperty] private bool   _isHdrActive;
-    [ObservableProperty] private byte   _currentBrightness;
-    [ObservableProperty] private int    _currentSdrValue;
-    [ObservableProperty] private int    _currentNits = 80;
-    [ObservableProperty] private bool   _updateAvailable;
+    [ObservableProperty] private bool _isHdrActive;
+    [ObservableProperty] private bool _isHdrStateAvailable;
+    [ObservableProperty] private bool _hasBrightnessReading;
+    [ObservableProperty] private byte _currentBrightness;
+    [ObservableProperty] private int _currentSdrValue;
+    [ObservableProperty] private int _currentNits = 80;
+    [ObservableProperty] private bool _updateAvailable;
     [ObservableProperty] private string _updateVersion = "";
-    [ObservableProperty] private string _updateUrl = "";
+    private Uri? _updateUri;
 
     public bool IsEnabled
     {
@@ -32,19 +34,30 @@ public partial class DashboardViewModel : ObservableObject
             _settings.Save();
             OnPropertyChanged();
             OnPropertyChanged(nameof(StatusDescription));
-            if (value && IsHdrActive)
-                _hdr.RefreshSdr();
         }
     }
 
-    public string HdrStatusLabel    => IsHdrActive ? "Active" : "Inactive";
-    public string BrightnessText    => IsHdrActive ? $"{CurrentBrightness}%" : "—";
-    public string SdrText           => IsHdrActive ? $"{CurrentSdrValue}" : "—";
-    public string NitsText          => IsHdrActive ? $"{CurrentNits} nits" : "—";
-    public string StatusDescription => !IsEnabled
+    public BuiltInHdrState HdrVisualState => !IsHdrStateAvailable
+        ? BuiltInHdrState.Unavailable
+        : IsHdrActive ? BuiltInHdrState.Active : BuiltInHdrState.Inactive;
+    public bool HasLiveReading => IsHdrStateAvailable && IsHdrActive && HasBrightnessReading;
+    public string HdrStatusLabel => HdrVisualState switch
+    {
+        BuiltInHdrState.Active => "Active",
+        BuiltInHdrState.Inactive => "Inactive",
+        _ => "Unavailable"
+    };
+    public string BrightnessText => HasLiveReading ? $"{CurrentBrightness}%" : "—";
+    public string SdrText => HasLiveReading ? $"{CurrentSdrValue}" : "—";
+    public string NitsText => HasLiveReading ? $"{CurrentNits} nits" : "—";
+    public string StatusDescription => !IsHdrStateAvailable
+        ? "The HDR display state is temporarily unavailable — Go2HDR will retry automatically."
+        : !IsEnabled
         ? "Go2HDR is paused — automatic adjustment is disabled."
         : IsHdrActive
-            ? "HDR is active — SDR white level is being adjusted automatically."
+            ? HasBrightnessReading
+                ? "HDR is active — SDR white level is being adjusted automatically."
+                : "HDR is active, but screen brightness is temporarily unavailable."
             : "HDR is not active — waiting for HDR to be enabled on the display.";
 
     public string SdrRangeText
@@ -59,10 +72,10 @@ public partial class DashboardViewModel : ObservableObject
         }
     }
 
-    public ObservableCollection<CurvePoint> CurvePoints  => _curve.CurvePoints;
-    public double                           MinBrightness => _curve.MinimumBrightness;
+    public ObservableCollection<CurvePoint> CurvePoints => _curve.CurvePoints;
+    public double MinBrightness => _curve.MinimumBrightness;
 
-    public CurvePoint? ActivePoint => IsHdrActive
+    public CurvePoint? ActivePoint => HasLiveReading
         ? _curve.CurvePoints.FirstOrDefault(p => (int)Math.Round(p.Brightness) == CurrentBrightness)
         : null;
 
@@ -70,37 +83,42 @@ public partial class DashboardViewModel : ObservableObject
                                SettingsService settings, SdrCurveViewModel curve,
                                UpdateService update)
     {
-        _hdr      = hdr;
+        _hdr = hdr;
         _settings = settings;
-        _curve    = curve;
+        _curve = curve;
 
-        hdr.HdrStateChanged   += OnHdrStateChanged;
+        hdr.HdrStateChanged += OnHdrStateChanged;
+        hdr.HdrAvailabilityChanged += OnHdrAvailabilityChanged;
         hdr.BrightnessChanged += OnBrightnessChanged;
-        settings.Saved        += OnSettingsSaved;
+        settings.Changed += OnSettingsChanged;
 
         update.NewVersionFound += r => Application.Current.Dispatcher.InvokeAsync(() =>
         {
             UpdateAvailable = true;
-            UpdateVersion   = r.LatestVersion;
-            UpdateUrl       = r.ReleaseUrl;
+            UpdateVersion = r.LatestVersion;
+            _updateUri = r.ReleaseUri;
         });
 
 #pragma warning disable MVVMTK0034
         _isHdrActive = hdr.IsHdrActive;
+        _isHdrStateAvailable = hdr.IsStateAvailable;
         if (_isHdrActive)
         {
-            byte b             = brightness.GetCurrentBrightness();
-            _currentBrightness = b;
-            _currentSdrValue   = settings.GetSdrValue(b);
-            _currentNits       = SettingsService.SdrValueToNits(_currentSdrValue);
+            if (brightness.TryGetCurrentBrightness(out byte b))
+            {
+                _hasBrightnessReading = true;
+                _currentBrightness = b;
+                _currentSdrValue = settings.GetSdrValue(b);
+                _currentNits = SettingsService.SdrValueToNits(_currentSdrValue);
+            }
         }
 
         // Catch the case where CheckAsync ran and completed before this VM was constructed.
         if (update.LastResult?.IsNewer == true)
         {
             _updateAvailable = true;
-            _updateVersion   = update.LastResult.LatestVersion;
-            _updateUrl       = update.LastResult.ReleaseUrl;
+            _updateVersion = update.LastResult.LatestVersion;
+            _updateUri = update.LastResult.ReleaseUri;
         }
 #pragma warning restore MVVMTK0034
     }
@@ -108,16 +126,50 @@ public partial class DashboardViewModel : ObservableObject
     [RelayCommand]
     private void OpenReleasePage()
     {
-        if (!string.IsNullOrEmpty(UpdateUrl))
-            Process.Start(new ProcessStartInfo(UpdateUrl) { UseShellExecute = true });
+        if (_updateUri is not null)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(_updateUri.AbsoluteUri) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("Opening the update page failed.", ex);
+            }
+        }
     }
 
     partial void OnIsHdrActiveChanged(bool value)
     {
+        HasBrightnessReading = false;
         OnPropertyChanged(nameof(HdrStatusLabel));
+        OnPropertyChanged(nameof(HdrVisualState));
+        OnPropertyChanged(nameof(HasLiveReading));
         OnPropertyChanged(nameof(BrightnessText));
         OnPropertyChanged(nameof(SdrText));
         OnPropertyChanged(nameof(NitsText));
+        OnPropertyChanged(nameof(StatusDescription));
+        OnPropertyChanged(nameof(ActivePoint));
+    }
+
+    partial void OnIsHdrStateAvailableChanged(bool value)
+    {
+        OnPropertyChanged(nameof(HdrStatusLabel));
+        OnPropertyChanged(nameof(HdrVisualState));
+        OnPropertyChanged(nameof(HasLiveReading));
+        OnPropertyChanged(nameof(BrightnessText));
+        OnPropertyChanged(nameof(SdrText));
+        OnPropertyChanged(nameof(NitsText));
+        OnPropertyChanged(nameof(StatusDescription));
+        OnPropertyChanged(nameof(ActivePoint));
+    }
+
+    partial void OnHasBrightnessReadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(BrightnessText));
+        OnPropertyChanged(nameof(SdrText));
+        OnPropertyChanged(nameof(NitsText));
+        OnPropertyChanged(nameof(HasLiveReading));
         OnPropertyChanged(nameof(StatusDescription));
         OnPropertyChanged(nameof(ActivePoint));
     }
@@ -139,18 +191,22 @@ public partial class DashboardViewModel : ObservableObject
     private void OnHdrStateChanged(bool active) =>
         Application.Current.Dispatcher.InvokeAsync(() => IsHdrActive = active);
 
+    private void OnHdrAvailabilityChanged(bool available) =>
+        Application.Current.Dispatcher.InvokeAsync(() => IsHdrStateAvailable = available);
+
     private void OnBrightnessChanged(byte b) =>
         Application.Current.Dispatcher.InvokeAsync(() =>
         {
+            HasBrightnessReading = true;
             CurrentBrightness = b;
-            CurrentSdrValue   = _settings.GetSdrValue(b);
-            CurrentNits       = SettingsService.SdrValueToNits(CurrentSdrValue);
+            CurrentSdrValue = _settings.GetSdrValue(b);
+            CurrentNits = SettingsService.SdrValueToNits(CurrentSdrValue);
         });
 
     // Refresh derived properties that read from settings — called whenever settings are saved
     // (curve edits, MinimumBrightness change, reset). Keeps the Dashboard curve card in sync
     // with changes made on SdrCurvePage without requiring a page reload.
-    private void OnSettingsSaved() =>
+    private void OnSettingsChanged() =>
         Application.Current.Dispatcher.InvokeAsync(() =>
         {
             OnPropertyChanged(nameof(SdrRangeText));
