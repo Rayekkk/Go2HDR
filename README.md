@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="Assets/Go2HDR_About.png" width="96" alt="Go2HDR"/>
+  <img src="Go2HDR.png" width="96" alt="Go2HDR"/>
   <h1>Go2HDR</h1>
   <p>Automatic SDR white level compensation for HDR displays on Lenovo Legion Go 2</p>
 
